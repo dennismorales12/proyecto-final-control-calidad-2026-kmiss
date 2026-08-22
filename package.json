@@ -1,0 +1,15 @@
+{
+  "name": "kmiss-clinica",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
+  "scripts": {
+    "build": "npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend",
+    "db:init": "npm run init-db --prefix backend",
+    "db:seed": "npm run seed --prefix backend",
+    "render-build": "npm run build && npm run db:init && npm run db:seed",
+    "start": "npm start --prefix backend"
+  }
+}
