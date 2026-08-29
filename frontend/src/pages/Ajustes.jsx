@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ImagePlus, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Package, Pencil, Plus, Search, Tags, Trash2, X } from 'lucide-react';
 import { api } from '../services/api';
 import { urlArchivo } from '../config';
 
 const VACIO = { nombre: '', orden: 0, activo: true };
 const HOY = new Date().toISOString().split('T')[0];
-const PROMO_VACIA = { producto_id: '', descuento_porcentaje: 10, fecha_inicio: HOY, fecha_fin: '', activo: true };
+const PROMO_VACIA = { alcance: 'producto', producto_id: '', categoria_id: '', descuento_porcentaje: 10, fecha_inicio: HOY, fecha_fin: '', activo: true };
 const SEDE_VACIA = { nombre: '', direccion: '', telefono: '', activo: true };
 const BLOQUEO_VACIO = { medico_id: '', sede_id: '', fecha: HOY, hora_inicio: '12:00', hora_fin: '13:00', motivo: 'Almuerzo' };
 const NOTICIA_VACIA = { titulo: '', resumen: '', contenido: '', fecha_evento: '', enlace_url: '', activo: true };
@@ -27,6 +27,9 @@ export default function Ajustes() {
   const [modalPromo, setModalPromo] = useState(false);
   const [promoEditando, setPromoEditando] = useState(null);
   const [promoFormulario, setPromoFormulario] = useState(PROMO_VACIA);
+  const [promoBusqueda, setPromoBusqueda] = useState('');
+  const [promoBuscando, setPromoBuscando] = useState(false);
+  const [promoResultadosAbiertos, setPromoResultadosAbiertos] = useState(false);
   const [sedes, setSedes] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [horarios, setHorarios] = useState([]);
@@ -48,15 +51,43 @@ export default function Ajustes() {
 
   async function cargar() {
     try {
-      const [categoriasDatos, promocionesDatos, productosDatos, sedesDatos, medicosDatos, horariosDatos, bloqueosDatos, noticiasDatos] = await Promise.all([
-        api.ajustes.categorias.listar(), api.ajustes.promociones.listar(), api.productos.listar(), api.ajustes.sedes.listar(), api.citas.medicos(), api.ajustes.horarios.listar(), api.ajustes.bloqueos.listar(), api.ajustes.noticias.listar(),
+      const [categoriasDatos, promocionesDatos, sedesDatos, medicosDatos, horariosDatos, bloqueosDatos, noticiasDatos] = await Promise.all([
+        api.ajustes.categorias.listar(), api.ajustes.promociones.listar(), api.ajustes.sedes.listar(), api.citas.medicos(), api.ajustes.horarios.listar(), api.ajustes.bloqueos.listar(), api.ajustes.noticias.listar(),
       ]);
-      setCategorias(categoriasDatos); setPromociones(promocionesDatos); setProductos(productosDatos);
+      setCategorias(categoriasDatos); setPromociones(promocionesDatos);
       setSedes(sedesDatos); setMedicos(medicosDatos); setHorarios(horariosDatos); setBloqueos(bloqueosDatos);
       setNoticias(noticiasDatos);
     } catch (err) { setError(err.message); }
   }
   useEffect(() => { cargar(); }, []);
+
+  useEffect(() => {
+    if (!modalPromo || promoFormulario.alcance !== 'producto') return undefined;
+    if (promoFormulario.producto_id) {
+      setPromoBuscando(false); setPromoResultadosAbiertos(false);
+      return undefined;
+    }
+    const termino = promoBusqueda.trim();
+    if (termino.length < 2) {
+      setProductos([]); setPromoBuscando(false); setPromoResultadosAbiertos(false);
+      return undefined;
+    }
+
+    let vigente = true;
+    setPromoBuscando(true);
+    const espera = setTimeout(() => {
+      api.productos.buscar(termino, 8)
+        .then((datos) => {
+          if (!vigente) return;
+          setProductos(datos);
+          setPromoResultadosAbiertos(true);
+        })
+        .catch((err) => { if (vigente) setError(err.message); })
+        .finally(() => { if (vigente) setPromoBuscando(false); });
+    }, 250);
+
+    return () => { vigente = false; clearTimeout(espera); };
+  }, [modalPromo, promoBusqueda, promoFormulario.alcance, promoFormulario.producto_id]);
 
   function abrir(categoria = null) {
     setEditando(categoria?.id || null);
@@ -91,13 +122,31 @@ export default function Ajustes() {
   function abrirPromocion(promocion = null) {
     setPromoEditando(promocion?.id || null);
     setPromoFormulario(promocion ? {
-      producto_id: promocion.producto_id,
+      alcance: promocion.categoria_id ? 'categoria' : 'producto',
+      producto_id: promocion.producto_id || '',
+      categoria_id: promocion.categoria_id || '',
       descuento_porcentaje: Number(promocion.descuento_porcentaje),
       fecha_inicio: String(promocion.fecha_inicio).slice(0, 10),
       fecha_fin: promocion.fecha_fin ? String(promocion.fecha_fin).slice(0, 10) : '',
       activo: promocion.activo,
-    } : PROMO_VACIA);
+    } : { ...PROMO_VACIA });
+    setPromoBusqueda(promocion?.producto_nombre || '');
+    setProductos([]); setPromoBuscando(false); setPromoResultadosAbiertos(false);
     setError(''); setModalPromo(true);
+  }
+
+  function cambiarAlcancePromocion(alcance) {
+    setPromoFormulario((actual) => ({ ...actual, alcance, producto_id: '', categoria_id: '' }));
+    setPromoBusqueda(''); setProductos([]); setPromoResultadosAbiertos(false); setError('');
+  }
+
+  function seleccionarProductoPromocion(producto) {
+    setPromoFormulario((actual) => ({ ...actual, producto_id: producto.id, categoria_id: '' }));
+    setPromoBusqueda(producto.nombre); setPromoResultadosAbiertos(false);
+  }
+
+  function nombreObjetivoPromocion(promocion) {
+    return promocion.categoria_nombre || promocion.producto_nombre || 'Promoción';
   }
 
   async function guardarPromocion(e) {
@@ -117,7 +166,7 @@ export default function Ajustes() {
   }
 
   async function eliminarPromocion(promocion) {
-    if (!window.confirm(`¿Eliminar la promocion de "${promocion.producto_nombre}"?`)) return;
+    if (!window.confirm(`¿Eliminar la promoción de "${nombreObjetivoPromocion(promocion)}"?`)) return;
     try { await api.ajustes.promociones.eliminar(promocion.id); setError(''); cargar(); }
     catch (err) { setError(err.message); }
   }
@@ -239,18 +288,18 @@ export default function Ajustes() {
 
       <section className="ajustes-seccion ajustes-bloque">
         <div className="ajustes-encabezado">
-          <div><h2>Promociones de productos</h2><p>Selecciona un artículo, descuento y período de vigencia para la tienda.</p></div>
+          <div><h2>Promociones de productos</h2><p>Aplica descuentos a un artículo específico o a todos los productos de una categoría.</p></div>
           <button className="boton-primario" onClick={() => abrirPromocion()}><Plus size={16} /> Nueva promoción</button>
         </div>
         <div className="tabla-contenedor">
           <table className="tabla">
-            <thead><tr><th>Producto</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Alcance</th><th>Descuento</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
             <tbody>{promociones.length === 0 ? <tr><td colSpan="5" className="texto-tenue">No hay promociones registradas.</td></tr> : promociones.map((promo) => (
               <tr key={promo.id}>
-                <td>{promo.producto_nombre}<div className="texto-tenue">Precio base: Q{Number(promo.precio).toFixed(2)}</div></td>
+                <td><div className="promocion-objetivo"><span className="etiqueta">{promo.alcance === 'categoria' ? 'Categoría' : 'Artículo'}</span><strong>{nombreObjetivoPromocion(promo)}</strong>{promo.producto_id ? <small>Precio base: Q{Number(promo.precio).toFixed(2)}</small> : <small>Aplica a todos sus artículos</small>}</div></td>
                 <td><strong>{Number(promo.descuento_porcentaje).toFixed(0)}%</strong></td>
                 <td>{String(promo.fecha_inicio).slice(0,10)} — {promo.fecha_fin ? String(promo.fecha_fin).slice(0,10) : 'Sin vencimiento'}</td>
-                <td><button className={`interruptor ${promo.activo ? 'activo' : ''}`} onClick={() => alternarPromocion(promo)} aria-label={`Cambiar promoción de ${promo.producto_nombre}`}><span /></button></td>
+                <td><button className={`interruptor ${promo.activo ? 'activo' : ''}`} onClick={() => alternarPromocion(promo)} aria-label={`Cambiar promoción de ${nombreObjetivoPromocion(promo)}`}><span /></button></td>
                 <td className="tabla-acciones"><button onClick={() => abrirPromocion(promo)} title="Editar"><Pencil size={16} /></button><button className="boton-peligro" onClick={() => eliminarPromocion(promo)} title="Eliminar"><Trash2 size={16} /></button></td>
               </tr>
             ))}</tbody>
@@ -305,13 +354,17 @@ export default function Ajustes() {
       {modalPromo && <div className="modal-fondo" onClick={() => setModalPromo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-encabezado"><h2>{promoEditando ? 'Editar promoción' : 'Nueva promoción'}</h2><button className="modal-cerrar" onClick={() => setModalPromo(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={guardarPromocion}>
-          <label className="campo-ancho">Artículo *<select required value={promoFormulario.producto_id} onChange={(e) => setPromoFormulario({ ...promoFormulario, producto_id: Number(e.target.value) })}><option value="">Selecciona un artículo</option>{productos.map((p) => <option key={p.id} value={p.id}>{p.nombre} · Q{Number(p.precio).toFixed(2)}</option>)}</select></label>
+          <div className="campo-ancho promo-alcance"><span>Aplicar promoción a *</span><div role="group" aria-label="Alcance de la promoción"><button type="button" className={promoFormulario.alcance === 'producto' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('producto')}><Package size={16} /> Un artículo</button><button type="button" className={promoFormulario.alcance === 'categoria' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('categoria')}><Tags size={16} /> Una categoría</button></div></div>
+          {promoFormulario.alcance === 'producto' ? <div className="campo-ancho promo-selector-producto"><span className="campo-etiqueta">Buscar artículo *</span><div className={`promo-buscador ${promoFormulario.producto_id ? 'seleccionado' : ''}`}><Search size={17} /><input required autoComplete="off" role="combobox" aria-expanded={promoResultadosAbiertos} aria-controls="promo-resultados" placeholder="Escribe al menos 2 letras del artículo" value={promoBusqueda} onFocus={() => { if (productos.length) setPromoResultadosAbiertos(true); }} onChange={(e) => { setPromoBusqueda(e.target.value); setPromoFormulario({ ...promoFormulario, producto_id: '' }); }} onKeyDown={(e) => { if (e.key === 'Escape') setPromoResultadosAbiertos(false); }} />{promoBuscando && <small>Buscando…</small>}</div>
+            {promoResultadosAbiertos && <div className="promo-resultados" id="promo-resultados" role="listbox">{productos.length ? productos.map((producto) => <button type="button" role="option" key={producto.id} onClick={() => seleccionarProductoPromocion(producto)}><span><strong>{producto.nombre}</strong><small>{producto.categoria || 'Sin categoría'}</small></span><b>Q{Number(producto.precio).toFixed(2)}</b></button>) : <p>No se encontraron artículos similares.</p>}</div>}
+            <small className="promo-ayuda">{promoFormulario.producto_id ? 'Artículo seleccionado' : 'Los resultados aparecerán mientras escribes.'}</small>
+          </div> : <label className="campo-ancho">Categoría *<select required value={promoFormulario.categoria_id} onChange={(e) => setPromoFormulario({ ...promoFormulario, categoria_id: Number(e.target.value), producto_id: '' })}><option value="">Selecciona una categoría</option>{categorias.filter((categoria) => categoria.activo || categoria.id === promoFormulario.categoria_id).map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>)}</select><small>El descuento se aplicará a todos los artículos activos de esta categoría.</small></label>}
           <label>Descuento (%) *<input type="number" required min="1" max="100" step="1" value={promoFormulario.descuento_porcentaje} onChange={(e) => setPromoFormulario({ ...promoFormulario, descuento_porcentaje: Number(e.target.value) })} /></label>
           <label>Fecha de inicio *<input type="date" required value={promoFormulario.fecha_inicio} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_inicio: e.target.value })} /></label>
           <label>Fecha de finalización<input type="date" min={promoFormulario.fecha_inicio} value={promoFormulario.fecha_fin} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_fin: e.target.value })} /></label>
           <label className="campo-checkbox"><input type="checkbox" checked={promoFormulario.activo} onChange={(e) => setPromoFormulario({ ...promoFormulario, activo: e.target.checked })} />Promoción activa</label>
           {error && <p className="login-error campo-ancho">{error}</p>}
-          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalPromo(false)}>Cancelar</button><button className="boton-primario">Guardar promoción</button></div>
+          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalPromo(false)}>Cancelar</button><button className="boton-primario" disabled={promoFormulario.alcance === 'producto' ? !promoFormulario.producto_id : !promoFormulario.categoria_id}>Guardar promoción</button></div>
         </form>
       </div></div>}
 

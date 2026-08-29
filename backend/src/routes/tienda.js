@@ -162,7 +162,7 @@ router.get('/productos', async (req, res) => {
        FROM productos p LEFT JOIN categorias_productos c ON c.id = p.categoria_id
        LEFT JOIN LATERAL (
          SELECT descuento_porcentaje FROM promociones_productos pr
-         WHERE pr.producto_id=p.id AND pr.activo=TRUE
+         WHERE (pr.producto_id=p.id OR pr.categoria_id=p.categoria_id) AND pr.activo=TRUE
            AND pr.fecha_inicio <= CURRENT_DATE AND (pr.fecha_fin IS NULL OR pr.fecha_fin >= CURRENT_DATE)
          ORDER BY pr.descuento_porcentaje DESC LIMIT 1
        ) promo ON TRUE
@@ -207,7 +207,8 @@ router.post('/pedidos', async (req, res) => {
       const producto = await client.query(
         `SELECT id, nombre,
            ROUND(precio * (1 - COALESCE((SELECT MAX(descuento_porcentaje) FROM promociones_productos pr
-             WHERE pr.producto_id=productos.id AND pr.activo=TRUE AND pr.fecha_inicio <= CURRENT_DATE
+             WHERE (pr.producto_id=productos.id OR pr.categoria_id=productos.categoria_id)
+               AND pr.activo=TRUE AND pr.fecha_inicio <= CURRENT_DATE
                AND (pr.fecha_fin IS NULL OR pr.fecha_fin >= CURRENT_DATE)), 0) / 100), 2) AS precio,
            stock_actual, stock_reservado, activo
          FROM productos WHERE id = $1 FOR UPDATE`,

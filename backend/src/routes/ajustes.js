@@ -91,8 +91,11 @@ router.delete('/categorias/:id', async (req, res) => {
 router.get('/promociones', async (req, res) => {
   try {
     const resultado = await pool.query(
-      `SELECT pr.*, p.nombre AS producto_nombre, p.precio
-       FROM promociones_productos pr JOIN productos p ON p.id=pr.producto_id
+      `SELECT pr.*, p.nombre AS producto_nombre, p.precio, c.nombre AS categoria_nombre,
+              CASE WHEN pr.categoria_id IS NOT NULL THEN 'categoria' ELSE 'producto' END AS alcance
+       FROM promociones_productos pr
+       LEFT JOIN productos p ON p.id=pr.producto_id
+       LEFT JOIN categorias_productos c ON c.id=pr.categoria_id
        ORDER BY pr.activo DESC, pr.creado_en DESC`
     );
     res.json(resultado.rows);
@@ -103,14 +106,16 @@ router.get('/promociones', async (req, res) => {
 
 router.post('/promociones', async (req, res) => {
   const descuento = Number(req.body.descuento_porcentaje);
-  if (!req.body.producto_id || descuento <= 0 || descuento > 100) {
-    return res.status(400).json({ error: 'Selecciona un producto y un descuento entre 1% y 100%' });
+  const productoId = req.body.producto_id ? Number(req.body.producto_id) : null;
+  const categoriaId = req.body.categoria_id ? Number(req.body.categoria_id) : null;
+  if ((!productoId && !categoriaId) || (productoId && categoriaId) || descuento <= 0 || descuento > 100) {
+    return res.status(400).json({ error: 'Selecciona un artículo o una categoría y un descuento entre 1% y 100%' });
   }
   try {
     const resultado = await pool.query(
-      `INSERT INTO promociones_productos (producto_id, descuento_porcentaje, fecha_inicio, fecha_fin, creado_por)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [req.body.producto_id, descuento, req.body.fecha_inicio || new Date(), req.body.fecha_fin || null, req.usuario.id]
+      `INSERT INTO promociones_productos (producto_id, categoria_id, descuento_porcentaje, fecha_inicio, fecha_fin, creado_por)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+      [productoId, categoriaId, descuento, req.body.fecha_inicio || new Date(), req.body.fecha_fin || null, req.usuario.id]
     );
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
@@ -120,15 +125,17 @@ router.post('/promociones', async (req, res) => {
 
 router.put('/promociones/:id', async (req, res) => {
   const descuento = Number(req.body.descuento_porcentaje);
-  if (!req.body.producto_id || descuento <= 0 || descuento > 100) {
-    return res.status(400).json({ error: 'Selecciona un producto y un descuento entre 1% y 100%' });
+  const productoId = req.body.producto_id ? Number(req.body.producto_id) : null;
+  const categoriaId = req.body.categoria_id ? Number(req.body.categoria_id) : null;
+  if ((!productoId && !categoriaId) || (productoId && categoriaId) || descuento <= 0 || descuento > 100) {
+    return res.status(400).json({ error: 'Selecciona un artículo o una categoría y un descuento entre 1% y 100%' });
   }
   try {
     const resultado = await pool.query(
-      `UPDATE promociones_productos SET producto_id=$1, descuento_porcentaje=$2,
-       fecha_inicio=$3, fecha_fin=$4, activo=$5, actualizado_en=NOW()
-       WHERE id=$6 RETURNING *`,
-      [req.body.producto_id, descuento, req.body.fecha_inicio, req.body.fecha_fin || null, req.body.activo !== false, req.params.id]
+      `UPDATE promociones_productos SET producto_id=$1, categoria_id=$2, descuento_porcentaje=$3,
+       fecha_inicio=$4, fecha_fin=$5, activo=$6, actualizado_en=NOW()
+       WHERE id=$7 RETURNING *`,
+      [productoId, categoriaId, descuento, req.body.fecha_inicio, req.body.fecha_fin || null, req.body.activo !== false, req.params.id]
     );
     if (!resultado.rows[0]) return res.status(404).json({ error: 'Promocion no encontrada' });
     res.json(resultado.rows[0]);

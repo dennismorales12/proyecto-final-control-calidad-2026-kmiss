@@ -11,17 +11,22 @@ router.use(autenticar);
 // GET /api/productos — lista con búsqueda opcional (?q=texto)
 router.get('/', async (req, res) => {
   const { q } = req.query;
+  const limiteSolicitado = Number(req.query.limit);
+  const limite = Number.isInteger(limiteSolicitado) && limiteSolicitado > 0
+    ? Math.min(limiteSolicitado, 50)
+    : null;
   try {
     let resultado;
     if (q) {
-      resultado = await pool.query(
-        `SELECT p.id,p.nombre,p.descripcion,p.categoria_id,p.imagen_url,p.precio,p.costo,
+      const consulta = `SELECT p.id,p.nombre,p.descripcion,p.categoria_id,p.imagen_url,p.precio,p.costo,
                 p.stock_actual,p.stock_reservado,p.stock_minimo,p.unidad_medida,p.activo,p.creado_en,
                 COALESCE(c.nombre, p.categoria) AS categoria
          FROM productos p LEFT JOIN categorias_productos c ON c.id = p.categoria_id
-         WHERE p.nombre ILIKE $1 OR COALESCE(c.nombre, p.categoria) ILIKE $1 ORDER BY p.nombre ASC`,
-        [`%${q}%`]
-      );
+         WHERE p.nombre ILIKE $1 OR COALESCE(c.nombre, p.categoria) ILIKE $1
+         ORDER BY CASE WHEN p.nombre ILIKE $2 THEN 0 ELSE 1 END, p.nombre ASC
+         ${limite ? 'LIMIT $3' : ''}`;
+      const parametros = limite ? [`%${q}%`, `${q}%`, limite] : [`%${q}%`, `${q}%`];
+      resultado = await pool.query(consulta, parametros);
     } else {
       resultado = await pool.query(
         `SELECT p.id,p.nombre,p.descripcion,p.categoria_id,p.imagen_url,p.precio,p.costo,

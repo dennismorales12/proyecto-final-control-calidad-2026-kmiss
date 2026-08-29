@@ -183,6 +183,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px;
 }
 .boton-primario:hover { background: var(--color-rose-dark); }
+.boton-primario:disabled { opacity: .55; cursor: not-allowed; }
 .boton-secundario {
   background: var(--color-surface); border: 1px solid var(--color-border);
   padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--color-text);
@@ -404,6 +405,30 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .ajustes-noticia-celda > img, .ajustes-noticia-celda > span { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 5px; object-fit: cover; background: var(--color-bg); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); }
 .ajustes-noticia-celda > div { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .ajustes-noticia-celda small { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 520px; }
+.promocion-objetivo { display: flex; align-items: flex-start; flex-direction: column; gap: 3px; }
+.promocion-objetivo .etiqueta { margin-bottom: 2px; }
+.promocion-objetivo small { color: var(--color-text-muted); }
+.promo-alcance { display: flex; flex-direction: column; gap: 6px; }
+.promo-alcance > span, .campo-etiqueta { color: var(--color-text-muted); font-size: 13px; font-weight: 600; }
+.promo-alcance > div { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-bg); }
+.promo-alcance button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 0; border-radius: 5px; background: transparent; color: var(--color-text-muted); font-weight: 600; }
+.promo-alcance button.activo { background: var(--color-surface); color: var(--color-primary); box-shadow: 0 1px 4px rgba(17,17,16,.1); }
+.promo-selector-producto { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.promo-buscador { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 42px; padding: 0 11px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); color: var(--color-text-muted); }
+.promo-buscador:focus-within { outline: 2px solid var(--color-sage); outline-offset: 1px; border-color: var(--color-sage); }
+.promo-buscador.seleccionado { border-color: var(--color-success); }
+.promo-buscador input { min-width: 0; width: 100%; padding: 10px 0; border: 0; outline: 0; background: transparent; color: var(--color-text); }
+.promo-buscador > small { white-space: nowrap; color: var(--color-text-muted); font-size: 11px; }
+.promo-resultados { position: absolute; z-index: 20; top: calc(100% - 18px); left: 0; right: 0; max-height: 280px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); box-shadow: 0 14px 32px rgba(17,17,16,.16); }
+.promo-resultados button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--color-border); background: transparent; color: var(--color-text); text-align: left; }
+.promo-resultados button:last-child { border-bottom: 0; }
+.promo-resultados button:hover, .promo-resultados button:focus { background: var(--color-sage-tint); outline: 0; }
+.promo-resultados button > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.promo-resultados button strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.promo-resultados button small { color: var(--color-text-muted); font-size: 11px; }
+.promo-resultados button b { flex: 0 0 auto; font-family: var(--fuente-datos); font-size: 12px; }
+.promo-resultados p { margin: 0; padding: 14px 12px; color: var(--color-text-muted); font-size: 13px; }
+.promo-ayuda, .formulario-grid label > small { color: var(--color-text-muted); font-size: 11px; font-weight: 400; }
 .modal-horario-semanal { max-width: 900px; }
 .horario-identificacion { margin-bottom: 18px; }
 .editor-semana { border: 1px solid var(--color-border); border-radius: 7px; overflow: hidden; margin-bottom: 18px; }

@@ -82,6 +82,7 @@ export const api = {
 
   productos: {
     listar: (q = '') => peticion(`/productos${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    buscar: (q, limite = 8) => peticion(`/productos?q=${encodeURIComponent(q)}&limit=${limite}`),
     crear: (datos) => peticion('/productos', { method: 'POST', body: JSON.stringify(datos) }),
     actualizar: (id, datos) => peticion(`/productos/${id}`, { method: 'PUT', body: JSON.stringify(datos) }),
     subirImagen: (id, archivo) => {

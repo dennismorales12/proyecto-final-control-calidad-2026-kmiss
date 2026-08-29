@@ -294,6 +294,20 @@ ALTER TABLE servicios ADD COLUMN IF NOT EXISTS imagen_datos BYTEA;
 ALTER TABLE servicios ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(50);
 ALTER TABLE noticias ADD COLUMN IF NOT EXISTS imagen_datos BYTEA;
 ALTER TABLE noticias ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(50);
+ALTER TABLE promociones_productos ALTER COLUMN producto_id DROP NOT NULL;
+ALTER TABLE promociones_productos ADD COLUMN IF NOT EXISTS categoria_id INTEGER REFERENCES categorias_productos(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_promociones_categoria ON promociones_productos(categoria_id, activo);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'promociones_alcance_check'
+    ) THEN
+        ALTER TABLE promociones_productos
+            ADD CONSTRAINT promociones_alcance_check
+            CHECK ((producto_id IS NOT NULL AND categoria_id IS NULL)
+                OR (producto_id IS NULL AND categoria_id IS NOT NULL));
+    END IF;
+END $$;
 INSERT INTO categorias_productos (nombre)
 SELECT DISTINCT TRIM(p.categoria)
 FROM productos p
