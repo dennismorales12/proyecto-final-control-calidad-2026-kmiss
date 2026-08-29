@@ -1,4 +1,4 @@
-# Vitalis
+# KMISS CLINICA ESTETICA
 
 Sistema web de gestión para clínica / consultorio. Desarrollado con React, Vite, Node.js, Express y PostgreSQL.
 
