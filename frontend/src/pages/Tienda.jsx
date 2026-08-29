@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle2, CalendarDays, Package, Stethoscope, Instagram, MessageCircle, ArrowRight, ExternalLink, MapPin, Newspaper, Phone } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle2, CalendarDays, Package, Stethoscope, Instagram, MessageCircle, ArrowRight, ExternalLink, MapPin, Newspaper, Phone, ListFilter } from 'lucide-react';
 import { api } from '../services/api';
 import { APP_CONFIG } from '../config';
 import { urlArchivo } from '../config';
@@ -12,6 +12,7 @@ export default function Tienda() {
   const [noticias, setNoticias] = useState([]);
   const [medicos, setMedicos] = useState([]);
   const [vista, setVista] = useState('productos');
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('todas');
   const [cargando, setCargando] = useState(true);
   const [carrito, setCarrito] = useState([]); // [{ producto_id, nombre, precio, cantidad, stock_actual }]
   const [carritoAbierto, setCarritoAbierto] = useState(false);
@@ -93,6 +94,14 @@ export default function Tienda() {
 
   const totalCarrito = carrito.reduce((acc, i) => acc + i.cantidad * i.precio, 0);
   const cantidadTotal = carrito.reduce((acc, i) => acc + i.cantidad, 0);
+  const nombreCategoria = (producto) => producto.categoria?.trim() || 'Sin categoría';
+  const categoriasProductos = [...new Set(productos.map(nombreCategoria))];
+  const gruposProductos = categoriasProductos
+    .filter((categoria) => categoriaSeleccionada === 'todas' || categoria === categoriaSeleccionada)
+    .map((categoria) => ({
+      categoria,
+      productos: productos.filter((producto) => nombreCategoria(producto) === categoria),
+    }));
 
   async function confirmarPedido(e) {
     e.preventDefault();
@@ -179,35 +188,50 @@ export default function Tienda() {
           <p className="texto-vacio">No hay productos disponibles por el momento.</p>
         ) : (
             <section className="tienda-seccion">
-              <div className="tienda-seccion-titulo"><div><h2>Todos los productos</h2><p>Explora el catálogo completo de K-Skin.</p></div></div>
-              <div className="tienda-grid">
-                {productos.map((p) => {
-                  const enCarrito = carrito.find((i) => i.producto_id === p.id);
-                  const agotandoStock = p.stock_actual <= 5;
-                  return (
-                    <div key={p.id} className="tienda-tarjeta producto-publico" tabIndex="0">
-                      <div className="tienda-tarjeta-imagen">
-                        {p.imagen_url ? <img src={urlArchivo(p.imagen_url)} alt={p.nombre} /> : <span>Sin imagen</span>}
-                      </div>
-                      <div className="tienda-tarjeta-info">
-                        <h3>{p.nombre}</h3>
-                        {p.descripcion && <p className="tienda-tarjeta-descripcion">{p.descripcion}</p>}
-                        <div className="producto-etiquetas">{p.descuento_porcentaje && <span className="etiqueta oferta">-{Number(p.descuento_porcentaje).toFixed(0)}%</span>}{agotandoStock && <span className="etiqueta">Últimas unidades</span>}</div>
-                      </div>
-                      <div className="tienda-tarjeta-footer">
-                        <div className="producto-precios">{p.descuento_porcentaje && <span className="precio-anterior">Q{Number(p.precio).toFixed(2)}</span>}<span className="precio">Q{Number(p.precio_final ?? p.precio).toFixed(2)}</span></div>
-                        <button
-                          className="boton-primario"
-                          disabled={enCarrito && enCarrito.cantidad >= p.stock_actual}
-                          onClick={() => agregarAlCarrito(p)}
-                        >
-                          <Plus size={15} strokeWidth={2} /> {enCarrito ? `En carrito (${enCarrito.cantidad})` : 'Agregar'}
-                        </button>
-                      </div>
-                      <div className="producto-hover-detalle" role="tooltip"><strong>Detalles del artículo</strong><p>{p.descripcion || 'Este artículo no tiene detalles registrados todavía.'}</p><span>{p.categoria} · Disponible: {p.stock_actual}</span></div>
-                    </div>
-                  );
-                })}
+              <div className="tienda-seccion-titulo"><div><h2>Productos K-Skin</h2><p>Explora el catálogo por categoría y encuentra lo que necesitas.</p></div></div>
+              <div className="productos-filtros" aria-label="Filtrar productos por categoría">
+                <span><ListFilter size={16} /> Categorías</span>
+                <div className="productos-filtros-opciones">
+                  <button className={categoriaSeleccionada === 'todas' ? 'activo' : ''} onClick={() => setCategoriaSeleccionada('todas')}>Todos <small>{productos.length}</small></button>
+                  {categoriasProductos.map((categoria) => {
+                    const cantidad = productos.filter((producto) => nombreCategoria(producto) === categoria).length;
+                    return <button key={categoria} className={categoriaSeleccionada === categoria ? 'activo' : ''} onClick={() => setCategoriaSeleccionada(categoria)}>{categoria} <small>{cantidad}</small></button>;
+                  })}
+                </div>
+              </div>
+              <div className="productos-categorias">
+                {gruposProductos.map((grupo) => <section className="productos-categoria" key={grupo.categoria}>
+                  <div className="productos-categoria-encabezado"><h3>{grupo.categoria}</h3><span>{grupo.productos.length} {grupo.productos.length === 1 ? 'producto' : 'productos'}</span></div>
+                  <div className="tienda-grid">
+                    {grupo.productos.map((p) => {
+                      const enCarrito = carrito.find((i) => i.producto_id === p.id);
+                      const agotandoStock = p.stock_actual <= 5;
+                      return (
+                        <article key={p.id} className="tienda-tarjeta producto-publico" tabIndex="0">
+                          <div className="tienda-tarjeta-imagen">
+                            {p.imagen_url ? <img src={urlArchivo(p.imagen_url)} alt={p.nombre} /> : <span>Sin imagen</span>}
+                          </div>
+                          <div className="tienda-tarjeta-info">
+                            <h3>{p.nombre}</h3>
+                            {p.descripcion && <p className="tienda-tarjeta-descripcion">{p.descripcion}</p>}
+                            <div className="producto-etiquetas">{p.descuento_porcentaje && <span className="etiqueta oferta">-{Number(p.descuento_porcentaje).toFixed(0)}%</span>}{agotandoStock && <span className="etiqueta">Últimas unidades</span>}</div>
+                          </div>
+                          <div className="tienda-tarjeta-footer">
+                            <div className="producto-precios">{p.descuento_porcentaje && <span className="precio-anterior">Q{Number(p.precio).toFixed(2)}</span>}<span className="precio">Q{Number(p.precio_final ?? p.precio).toFixed(2)}</span></div>
+                            <button
+                              className="boton-primario"
+                              disabled={enCarrito && enCarrito.cantidad >= p.stock_actual}
+                              onClick={() => agregarAlCarrito(p)}
+                            >
+                              <Plus size={15} strokeWidth={2} /> {enCarrito ? `En carrito (${enCarrito.cantidad})` : 'Agregar'}
+                            </button>
+                          </div>
+                          <div className="producto-hover-detalle" role="tooltip"><strong>Detalles del artículo</strong><p>{p.descripcion || 'Este artículo no tiene detalles registrados todavía.'}</p><span>{nombreCategoria(p)} · Disponible: {p.stock_actual}</span></div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>)}
               </div>
             </section>
         )}
