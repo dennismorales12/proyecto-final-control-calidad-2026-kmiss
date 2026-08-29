@@ -1,6 +1,4 @@
 const express = require('express');
-const fs = require('fs/promises');
-const path = require('path');
 const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const uploadImagenNoticia = require('../middleware/uploadImagenNoticia');
@@ -150,7 +148,7 @@ router.delete('/promociones/:id', async (req, res) => {
 });
 
 router.get('/noticias', async (req, res) => {
-  try { res.json((await pool.query('SELECT * FROM noticias ORDER BY COALESCE(fecha_evento, creado_en::date) DESC, creado_en DESC')).rows); }
+  try { res.json((await pool.query('SELECT id,titulo,resumen,contenido,fecha_evento,enlace_url,imagen_url,activo,creado_por,creado_en,actualizado_en FROM noticias ORDER BY COALESCE(fecha_evento, creado_en::date) DESC, creado_en DESC')).rows); }
   catch (error) { res.status(500).json({ error: 'No se pudieron obtener las noticias' }); }
 });
 
@@ -160,7 +158,8 @@ router.post('/noticias', async (req, res) => {
   try {
     const resultado = await pool.query(
       `INSERT INTO noticias(titulo,resumen,contenido,fecha_evento,enlace_url,activo,creado_por)
-       VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+       VALUES($1,$2,$3,$4,$5,$6,$7)
+       RETURNING id,titulo,resumen,contenido,fecha_evento,enlace_url,imagen_url,activo,creado_por,creado_en,actualizado_en`,
       [titulo, req.body.resumen || null, req.body.contenido || null, req.body.fecha_evento || null,
         req.body.enlace_url || null, req.body.activo !== false, req.usuario.id]
     );
@@ -174,7 +173,8 @@ router.put('/noticias/:id', async (req, res) => {
   try {
     const resultado = await pool.query(
       `UPDATE noticias SET titulo=$1,resumen=$2,contenido=$3,fecha_evento=$4,enlace_url=$5,
-       activo=$6,actualizado_en=NOW() WHERE id=$7 RETURNING *`,
+       activo=$6,actualizado_en=NOW() WHERE id=$7
+       RETURNING id,titulo,resumen,contenido,fecha_evento,enlace_url,imagen_url,activo,creado_por,creado_en,actualizado_en`,
       [titulo, req.body.resumen || null, req.body.contenido || null, req.body.fecha_evento || null,
         req.body.enlace_url || null, req.body.activo !== false, req.params.id]
     );
@@ -186,8 +186,11 @@ router.put('/noticias/:id', async (req, res) => {
 router.post('/noticias/:id/imagen', uploadImagenNoticia.single('imagen'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se recibio ninguna imagen' });
   try {
-    const imagenUrl = `/uploads/noticias/${req.file.filename}`;
-    const resultado = await pool.query('UPDATE noticias SET imagen_url=$1,actualizado_en=NOW() WHERE id=$2 RETURNING *', [imagenUrl, req.params.id]);
+    const imagenUrl = `/api/media/noticias/${req.params.id}?v=${Date.now()}`;
+    const resultado = await pool.query(
+      'UPDATE noticias SET imagen_url=$1,imagen_datos=$2,imagen_mime=$3,actualizado_en=NOW() WHERE id=$4 RETURNING id,titulo,imagen_url',
+      [imagenUrl, req.file.buffer, req.file.mimetype, req.params.id]
+    );
     if (!resultado.rows[0]) return res.status(404).json({ error: 'Noticia no encontrada' });
     res.json(resultado.rows[0]);
   } catch (error) { res.status(500).json({ error: 'No se pudo guardar la imagen de la noticia' }); }
@@ -195,15 +198,8 @@ router.post('/noticias/:id/imagen', uploadImagenNoticia.single('imagen'), async 
 
 router.delete('/noticias/:id', async (req, res) => {
   try {
-    const resultado = await pool.query('DELETE FROM noticias WHERE id=$1 RETURNING imagen_url', [req.params.id]);
+    const resultado = await pool.query('DELETE FROM noticias WHERE id=$1 RETURNING id', [req.params.id]);
     if (!resultado.rows[0]) return res.status(404).json({ error: 'Noticia no encontrada' });
-
-    const imagenUrl = resultado.rows[0].imagen_url;
-    if (imagenUrl?.startsWith('/uploads/noticias/')) {
-      const carpetaNoticias = path.resolve(__dirname, '..', '..', 'uploads', 'noticias');
-      const rutaImagen = path.join(carpetaNoticias, path.basename(imagenUrl));
-      await fs.unlink(rutaImagen).catch(() => {});
-    }
     res.json({ mensaje: 'Noticia eliminada' });
   } catch (error) {
     res.status(500).json({ error: 'No se pudo eliminar la noticia' });

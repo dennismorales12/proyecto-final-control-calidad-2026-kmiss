@@ -288,6 +288,12 @@ CREATE INDEX IF NOT EXISTS idx_pedido_detalles_pedido ON pedido_detalles(pedido_
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS stock_reservado INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS categoria_id INTEGER REFERENCES categorias_productos(id);
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_url VARCHAR(500);
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_datos BYTEA;
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(50);
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS imagen_datos BYTEA;
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(50);
+ALTER TABLE noticias ADD COLUMN IF NOT EXISTS imagen_datos BYTEA;
+ALTER TABLE noticias ADD COLUMN IF NOT EXISTS imagen_mime VARCHAR(50);
 INSERT INTO categorias_productos (nombre)
 SELECT DISTINCT TRIM(p.categoria)
 FROM productos p

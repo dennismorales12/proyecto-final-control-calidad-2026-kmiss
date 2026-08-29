@@ -13,6 +13,7 @@ const tiendaRoutes = require('./routes/tienda');
 const pedidosRoutes = require('./routes/pedidos');
 const usuariosRoutes = require('./routes/usuarios');
 const ajustesRoutes = require('./routes/ajustes');
+const mediaRoutes = require('./routes/media');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,6 +26,7 @@ app.get('/health', (req, res) => {
   res.json({ estado: 'ok', servicio: 'vitalis-backend', timestamp: new Date().toISOString() });
 });
 
+app.use('/api/media', mediaRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/pacientes', pacientesRoutes);
 app.use('/api/servicios', serviciosRoutes);

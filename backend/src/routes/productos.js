@@ -15,14 +15,18 @@ router.get('/', async (req, res) => {
     let resultado;
     if (q) {
       resultado = await pool.query(
-        `SELECT p.*, COALESCE(c.nombre, p.categoria) AS categoria
+        `SELECT p.id,p.nombre,p.descripcion,p.categoria_id,p.imagen_url,p.precio,p.costo,
+                p.stock_actual,p.stock_reservado,p.stock_minimo,p.unidad_medida,p.activo,p.creado_en,
+                COALESCE(c.nombre, p.categoria) AS categoria
          FROM productos p LEFT JOIN categorias_productos c ON c.id = p.categoria_id
          WHERE p.nombre ILIKE $1 OR COALESCE(c.nombre, p.categoria) ILIKE $1 ORDER BY p.nombre ASC`,
         [`%${q}%`]
       );
     } else {
       resultado = await pool.query(
-        `SELECT p.*, COALESCE(c.nombre, p.categoria) AS categoria
+        `SELECT p.id,p.nombre,p.descripcion,p.categoria_id,p.imagen_url,p.precio,p.costo,
+                p.stock_actual,p.stock_reservado,p.stock_minimo,p.unidad_medida,p.activo,p.creado_en,
+                COALESCE(c.nombre, p.categoria) AS categoria
          FROM productos p LEFT JOIN categorias_productos c ON c.id = p.categoria_id ORDER BY p.nombre ASC`
       );
     }
@@ -44,7 +48,8 @@ router.post('/', permitirRoles('administrador'), async (req, res) => {
   try {
     const resultado = await pool.query(
       `INSERT INTO productos (nombre, descripcion, categoria_id, categoria, precio, costo, stock_actual, stock_minimo, unidad_medida)
-       VALUES ($1,$2,$3,(SELECT nombre FROM categorias_productos WHERE id=$3),$4,$5,$6,$7,$8) RETURNING *`,
+       VALUES ($1,$2,$3,(SELECT nombre FROM categorias_productos WHERE id=$3),$4,$5,$6,$7,$8)
+       RETURNING id,nombre,descripcion,categoria_id,categoria,imagen_url,precio,costo,stock_actual,stock_reservado,stock_minimo,unidad_medida,activo,creado_en`,
       [nombre, descripcion || null, categoria_id || null, precio || 0, costo || 0,
         stock_actual || 0, stock_minimo || 0, unidad_medida || 'unidad']
     );
@@ -58,8 +63,11 @@ router.post('/', permitirRoles('administrador'), async (req, res) => {
 router.post('/:id/imagen', permitirRoles('administrador'), uploadImagen.single('imagen'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se recibio ninguna imagen' });
   try {
-    const imagenUrl = `/uploads/productos/${req.file.filename}`;
-    const resultado = await pool.query('UPDATE productos SET imagen_url=$1 WHERE id=$2 RETURNING *', [imagenUrl, req.params.id]);
+    const imagenUrl = `/api/media/productos/${req.params.id}?v=${Date.now()}`;
+    const resultado = await pool.query(
+      'UPDATE productos SET imagen_url=$1, imagen_datos=$2, imagen_mime=$3 WHERE id=$4 RETURNING id,nombre,imagen_url',
+      [imagenUrl, req.file.buffer, req.file.mimetype, req.params.id]
+    );
     if (!resultado.rows[0]) return res.status(404).json({ error: 'Producto no encontrado' });
     res.json(resultado.rows[0]);
   } catch (error) {
@@ -82,7 +90,8 @@ router.put('/:id', permitirRoles('administrador'), async (req, res) => {
         nombre = $1, descripcion = $2, categoria_id = $3,
         categoria = (SELECT nombre FROM categorias_productos WHERE id=$3), precio = $4, costo = $5,
         stock_actual = $6, stock_minimo = $7, unidad_medida = $8, activo = $9
-       WHERE id = $10 RETURNING *`,
+       WHERE id = $10
+       RETURNING id,nombre,descripcion,categoria_id,categoria,imagen_url,precio,costo,stock_actual,stock_reservado,stock_minimo,unidad_medida,activo,creado_en`,
       [nombre, descripcion || null, categoria_id || null, precio || 0, costo || 0,
         stock_actual || 0, stock_minimo || 0, unidad_medida || 'unidad',
         activo !== undefined ? activo : true, req.params.id]

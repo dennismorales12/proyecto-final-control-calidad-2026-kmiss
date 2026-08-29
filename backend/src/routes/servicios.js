@@ -9,7 +9,9 @@ router.use(autenticar);
 // GET /api/servicios
 router.get('/', async (req, res) => {
   try {
-    const resultado = await pool.query('SELECT * FROM servicios ORDER BY nombre ASC');
+    const resultado = await pool.query(
+      'SELECT id,nombre,descripcion,duracion_minutos,precio,especialidad,imagen_url,activo,creado_en FROM servicios ORDER BY nombre ASC'
+    );
     res.json(resultado.rows);
   } catch (error) {
     console.error('Error al listar servicios:', error);
@@ -28,7 +30,8 @@ router.post('/', permitirRoles('administrador'), async (req, res) => {
   try {
     const resultado = await pool.query(
       `INSERT INTO servicios (nombre, descripcion, duracion_minutos, precio, especialidad)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id,nombre,descripcion,duracion_minutos,precio,especialidad,imagen_url,activo,creado_en`,
       [nombre, descripcion || null, duracion_minutos || 30, precio || 0, especialidad || null]
     );
     res.status(201).json(resultado.rows[0]);
@@ -41,8 +44,11 @@ router.post('/', permitirRoles('administrador'), async (req, res) => {
 router.post('/:id/imagen', permitirRoles('administrador'), uploadImagenServicio.single('imagen'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se recibio ninguna imagen' });
   try {
-    const imagenUrl = `/uploads/servicios/${req.file.filename}`;
-    const resultado = await pool.query('UPDATE servicios SET imagen_url=$1 WHERE id=$2 RETURNING *', [imagenUrl, req.params.id]);
+    const imagenUrl = `/api/media/servicios/${req.params.id}?v=${Date.now()}`;
+    const resultado = await pool.query(
+      'UPDATE servicios SET imagen_url=$1, imagen_datos=$2, imagen_mime=$3 WHERE id=$4 RETURNING id,nombre,imagen_url',
+      [imagenUrl, req.file.buffer, req.file.mimetype, req.params.id]
+    );
     if (!resultado.rows[0]) return res.status(404).json({ error: 'Servicio no encontrado' });
     res.json(resultado.rows[0]);
   } catch (error) {
@@ -59,7 +65,8 @@ router.put('/:id', permitirRoles('administrador'), async (req, res) => {
       `UPDATE servicios SET
         nombre = $1, descripcion = $2, duracion_minutos = $3,
         precio = $4, especialidad = $5, activo = $6
-       WHERE id = $7 RETURNING *`,
+       WHERE id = $7
+       RETURNING id,nombre,descripcion,duracion_minutos,precio,especialidad,imagen_url,activo,creado_en`,
       [nombre, descripcion || null, duracion_minutos || 30, precio || 0,
         especialidad || null, activo !== undefined ? activo : true, req.params.id]
     );
