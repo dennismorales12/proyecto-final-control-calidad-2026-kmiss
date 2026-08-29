@@ -1,21 +1,23 @@
 /* ============================================
    K-MISS — Sistema de tokens visuales
-   Paleta: carbón + dorado de marca + rosa empolvado
+   Paleta: neutros clínicos + dorado de marca + rosa focal
    Tipografía: Spectral (display) + Work Sans (cuerpo) + IBM Plex Mono (datos)
    ============================================ */
 
 :root {
-  --color-bg: #FAF6F5;
-  --color-surface: #FFFDFC;
+  --color-bg: #F5F5F2;
+  --color-surface: #FFFFFF;
   --color-primary: #262522;
   --color-primary-dark: #111110;
-  --color-sage: #A77B72;
-  --color-sage-tint: #F0E2DE;
+  --color-sage: #667870;
+  --color-sage-tint: #E7ECE9;
+  --color-rose: #A77B72;
+  --color-rose-dark: #8D675F;
   --color-gold: #C89B45;
   --color-gold-tint: #F5EAD3;
   --color-text: #292925;
-  --color-text-muted: #716763;
-  --color-border: #E5D9D5;
+  --color-text-muted: #6B706C;
+  --color-border: #DEDED7;
   --color-danger: #A8442E;
   --color-danger-tint: #F5E3DE;
   --color-success: #3F6B4C;
@@ -56,7 +58,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #EADBD6;
+  background-color: #EEECE5;
   background-image: url('./assets/brand/kmiss-texture.jpg');
   background-size: cover;
   background-position: center;
@@ -67,7 +69,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   position: absolute;
   inset: 0;
   z-index: -2;
-  background: rgba(250,235,232,.48);
+  background: rgba(255,255,255,.42);
 }
 .pantalla-login::after {
   content: '';
@@ -111,14 +113,14 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .login-formulario button {
   margin-top: 8px;
   padding: 12px;
-  background: var(--color-primary);
+  background: var(--color-rose);
   color: white;
   border: none;
   border-radius: 8px;
   font-weight: 600;
   font-size: 15px;
 }
-.login-formulario button:hover { background: var(--color-primary-dark); }
+.login-formulario button:hover { background: var(--color-rose-dark); }
 .login-formulario button:disabled { opacity: 0.6; cursor: default; }
 .login-error { color: var(--color-danger); font-size: 13px; margin: 0; font-weight: 500; }
 
@@ -132,7 +134,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   height: 100vh;
   position: sticky;
   top: 0;
-  background: #151514;
+  background: var(--color-rose-dark);
   color: white;
   display: flex;
   flex-direction: column;
@@ -151,8 +153,8 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   color: rgba(255,255,255,0.75); text-decoration: none;
   font-size: 14px; font-weight: 500;
 }
-.sidebar-link:hover { background: rgba(255,255,255,0.065); color: white; }
-.sidebar-link.active { background: rgba(167,123,114,.27); color: #F8E9E5; box-shadow: inset 3px 0 0 var(--color-sage); }
+.sidebar-link:hover { background: rgba(17,17,16,.12); color: white; }
+.sidebar-link.active { background: rgba(17,17,16,.24); color: white; box-shadow: inset 3px 0 0 var(--color-gold); }
 .sidebar-contador {
   margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -177,10 +179,10 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 
 .boton-primario {
   display: inline-flex; align-items: center; gap: 8px;
-  background: var(--color-primary); color: white; border: none;
+  background: var(--color-rose); color: white; border: none;
   padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px;
 }
-.boton-primario:hover { background: var(--color-primary-dark); }
+.boton-primario:hover { background: var(--color-rose-dark); }
 .boton-secundario {
   background: var(--color-surface); border: 1px solid var(--color-border);
   padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--color-text);
@@ -512,7 +514,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .productos-filtros-opciones { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .productos-filtros button { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 7px 11px; border: 1px solid var(--color-border); border-radius: 6px; background: #f8f8f5; color: var(--color-text); font-size: 12px; }
 .productos-filtros button:hover { border-color: var(--color-gold); }
-.productos-filtros button.activo { border-color: var(--color-sage); background: var(--color-sage); color: white; }
+.productos-filtros button.activo { border-color: #211f1b; background: #211f1b; color: white; }
 .productos-filtros button small { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: rgba(0,0,0,.07); font-size: 10px; }
 .productos-filtros button.activo small { background: rgba(255,255,255,.16); }
 .productos-categorias { display: flex; flex-direction: column; gap: 38px; }
@@ -580,48 +582,49 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 
 /* ---------- Identidad pública K-MISS ---------- */
 .tienda-pagina {
-  --color-bg: #faf6f5;
-  --color-surface: #fffdfc;
+  --color-bg: #f5f5f2;
+  --color-surface: #ffffff;
   --color-primary: #242320;
   --color-primary-dark: #111111;
-  --color-sage: #a77b72;
-  --color-sage-tint: #f0e2de;
+  --color-sage: #667870;
+  --color-sage-tint: #e7ece9;
   --color-gold: #c89b45;
   --color-gold-tint: #f5ead3;
   --color-text: #2b2a27;
-  --color-text-muted: #716763;
-  --color-border: #e5d9d5;
-  --color-success: #667f6c;
-  --color-success-tint: #e7efe8;
-  --color-rose: #8d675f;
+  --color-text-muted: #6d706c;
+  --color-border: #deded7;
+  --color-success: #5e7566;
+  --color-success-tint: #e5ece7;
+  --color-rose: #a77b72;
+  --color-rose-dark: #8d675f;
   --sombra: 0 1px 2px rgba(17,17,16,.05), 0 9px 26px rgba(17,17,16,.065);
 }
-.tienda-header { background: #111; padding: 9px 32px; border-bottom: 1px solid rgba(200,155,69,.36); }
+.tienda-header { background: var(--color-rose-dark); padding: 9px 32px; border-bottom: 1px solid rgba(200,155,69,.48); }
 .tienda-logo { display: block; width: 142px; height: auto; }
-.tienda-tabs { background: #282724; border: 1px solid #373530; }
+.tienda-tabs { background: rgba(17,17,16,.24); border: 1px solid rgba(255,255,255,.15); }
 .tienda-tabs button:hover { color: white; background: rgba(255,255,255,.07); }
-.tienda-tabs button.activo { background: var(--color-sage); color: white; }
+.tienda-tabs button.activo { background: var(--color-gold); color: #171511; }
 .tienda-header-acciones { display: flex; align-items: center; gap: 8px; }
-.tienda-social-boton, .tienda-carrito-boton { width: 40px; height: 40px; padding: 0; border: 1px solid #3d3734; border-radius: 6px; background: transparent; color: #f4ece8; display: inline-flex; align-items: center; justify-content: center; }
-.tienda-social-boton:hover, .tienda-carrito-boton:hover { background: #302e2a; color: #f1cf8a; }
+.tienda-social-boton, .tienda-carrito-boton { width: 40px; height: 40px; padding: 0; border: 1px solid rgba(255,255,255,.26); border-radius: 6px; background: rgba(17,17,16,.12); color: white; display: inline-flex; align-items: center; justify-content: center; }
+.tienda-social-boton:hover, .tienda-carrito-boton:hover { background: rgba(17,17,16,.28); color: #f1cf8a; }
 .tienda-carrito-contador { background: var(--color-gold); color: #171312; }
-.tienda-presentacion { position: relative; isolation: isolate; overflow: hidden; min-height: 360px; display: flex; align-items: center; background-color: #eadbd6; background-image: url('./assets/brand/kmiss-texture.jpg'); background-size: cover; background-position: center; border-bottom: 1px solid #dccac5; }
-.tienda-presentacion::before { content: ''; position: absolute; inset: 0; z-index: -2; background: rgba(239,215,211,.54); }
+.tienda-presentacion { position: relative; isolation: isolate; overflow: hidden; min-height: 360px; display: flex; align-items: center; background-color: #efeee9; background-image: url('./assets/brand/kmiss-texture.jpg'); background-size: cover; background-position: center; border-bottom: 1px solid #d6d4cb; }
+.tienda-presentacion::before { content: ''; position: absolute; inset: 0; z-index: -2; background: rgba(255,255,255,.38); }
 .tienda-presentacion::after { content: ''; position: absolute; z-index: -1; width: 430px; aspect-ratio: 1; right: max(24px, calc((100vw - 1120px) / 2)); top: 50%; transform: translateY(-50%); background: url('./assets/brand/kmiss-seal-black.png') center / contain no-repeat; opacity: .07; pointer-events: none; }
 .tienda-presentacion-interior { position: relative; z-index: 1; width: min(1100px, calc(100% - 48px)); margin: 0 auto; padding: 54px 0; }
 .tienda-eyebrow { margin: 0 0 10px; color: var(--color-rose); text-transform: uppercase; font-size: 12px; font-weight: 700; }
 .tienda-presentacion h1 { max-width: 680px; font-size: 48px; line-height: 1.05; font-weight: 500; color: #211f1b; }
 .tienda-presentacion-texto { max-width: 590px; margin: 16px 0 10px; font-size: 17px; line-height: 1.6; color: #5f605c; }
-.tienda-tratamientos { margin: 0; color: #856b65; font-size: 13px; }.tienda-tratamientos span { color: var(--color-gold); padding: 0 6px; }
+.tienda-tratamientos { margin: 0; color: #596a63; font-size: 13px; }.tienda-tratamientos span { color: var(--color-gold); padding: 0 6px; }
 .tienda-presentacion-acciones { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
 .tienda-presentacion-acciones a { color: #211f1b; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-weight: 600; font-size: 14px; }
 .tienda-presentacion-acciones a:hover { color: var(--color-rose); }
-.tienda-pagina .boton-primario { background: #211f1b; color: white; }
-.tienda-pagina .boton-primario:hover { background: var(--color-sage); color: white; }
+.tienda-pagina .boton-primario { background: var(--color-rose); color: white; }
+.tienda-pagina .boton-primario:hover { background: var(--color-rose-dark); color: white; }
 .tienda-contenido { padding-top: 42px; }
 .tienda-seccion h2, .tienda-seccion-titulo h2 { font-weight: 500; }
 .tienda-tarjeta { border: 1px solid var(--color-border); box-shadow: var(--sombra); }
-.tienda-tarjeta-imagen { aspect-ratio: 1; background: #f2e8e5; }
+.tienda-tarjeta-imagen { aspect-ratio: 1; background: #ecece7; }
 .servicio-publico-icono { background: var(--color-gold-tint); color: #8b6729; }
 .tienda-footer { background: #111; color: white; padding: 28px max(24px, calc((100% - 1100px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .tienda-footer-logo { display: block; width: 148px; height: auto; }
