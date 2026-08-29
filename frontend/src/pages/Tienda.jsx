@@ -3,6 +3,7 @@ import { ShoppingCart, Plus, Minus, Trash2, X, CheckCircle2, CalendarDays, Packa
 import { api } from '../services/api';
 import { APP_CONFIG } from '../config';
 import { urlArchivo } from '../config';
+import logoDorado from '../assets/brand/kmiss-logo-gold.png';
 
 export default function Tienda() {
   const [productos, setProductos] = useState([]);
@@ -117,11 +118,7 @@ export default function Tienda() {
     <div className="tienda-pagina">
       <header className="tienda-header">
         <div className="tienda-marca">
-          <span className="tienda-monograma">K</span>
-          <div>
-            <h1>{APP_CONFIG.nombreEmpresa}</h1>
-            <p>{APP_CONFIG.eslogan}</p>
-          </div>
+          <img className="tienda-logo" src={logoDorado} alt={`${APP_CONFIG.nombreEmpresa} - ${APP_CONFIG.eslogan}`} />
         </div>
         <div className="tienda-tabs" role="tablist">
           <button className={vista === 'productos' ? 'activo' : ''} onClick={() => setVista('productos')}><Package size={16} /> Productos</button>
@@ -226,7 +223,7 @@ export default function Tienda() {
       </div></div>}
 
       <footer className="tienda-footer">
-        <div><strong>K-MISS</strong><span>Medicina Estética Avanzada</span></div>
+        <img className="tienda-footer-logo" src={logoDorado} alt="K-MISS Medicina Estética Avanzada" />
         <nav><a href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={17} /> {APP_CONFIG.instagramUsuario}</a><a href={`https://wa.me/${APP_CONFIG.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={17} /> WhatsApp 5578-4833</a></nav>
       </footer>
 

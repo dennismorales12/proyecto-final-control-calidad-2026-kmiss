@@ -4,6 +4,7 @@ import { LayoutGrid, Users, Stethoscope, CalendarDays, LogOut, Package, Shopping
 import { useAuth } from '../contexts/AuthContext';
 import { APP_CONFIG } from '../config';
 import { api } from '../services/api';
+import logoDorado from '../assets/brand/kmiss-logo-gold.png';
 
 const ETIQUETAS_ROL = {
   administrador: 'Administrador/a',
@@ -29,11 +30,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-marca">
-        <span className="sidebar-marca-icono">+</span>
-        <div>
-          <p className="sidebar-marca-nombre">{APP_CONFIG.nombreEmpresa}</p>
-          <p className="sidebar-marca-slogan">{APP_CONFIG.eslogan}</p>
-        </div>
+        <img className="sidebar-logo" src={logoDorado} alt={`${APP_CONFIG.nombreEmpresa} - ${APP_CONFIG.eslogan}`} />
       </div>
 
       <nav className="sidebar-nav">

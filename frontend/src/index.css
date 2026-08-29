@@ -1,21 +1,21 @@
 /* ============================================
-   Vitalis — Sistema de tokens visuales
-   Paleta: verde clínico profundo + dorado sobrio
+   K-MISS — Sistema de tokens visuales
+   Paleta: carbón + dorado de marca + verde clínico
    Tipografía: Spectral (display) + Work Sans (cuerpo) + IBM Plex Mono (datos)
    ============================================ */
 
 :root {
-  --color-bg: #F4F6F2;
+  --color-bg: #F5F5F2;
   --color-surface: #FFFFFF;
-  --color-primary: #16423C;
-  --color-primary-dark: #0E2E2A;
-  --color-sage: #6B9080;
-  --color-sage-tint: #E7EEE8;
-  --color-gold: #B8912E;
-  --color-gold-tint: #F5EDD9;
-  --color-text: #1B2B26;
-  --color-text-muted: #62766C;
-  --color-border: #E0E5DD;
+  --color-primary: #262522;
+  --color-primary-dark: #111110;
+  --color-sage: #667870;
+  --color-sage-tint: #E7ECE9;
+  --color-gold: #C89B45;
+  --color-gold-tint: #F5EAD3;
+  --color-text: #292925;
+  --color-text-muted: #6B706C;
+  --color-border: #DEDED7;
   --color-danger: #A8442E;
   --color-danger-tint: #F5E3DE;
   --color-success: #3F6B4C;
@@ -26,7 +26,7 @@
   --fuente-datos: 'IBM Plex Mono', monospace;
 
   --radio: 10px;
-  --sombra: 0 1px 2px rgba(22, 66, 60, 0.06), 0 4px 16px rgba(22, 66, 60, 0.05);
+  --sombra: 0 1px 2px rgba(17, 17, 16, 0.06), 0 6px 18px rgba(17, 17, 16, 0.055);
 }
 
 * { box-sizing: border-box; }
@@ -49,40 +49,54 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 
 /* ---------- Login ---------- */
 .pantalla-login {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, var(--color-primary-dark) 0%, var(--color-primary) 55%, var(--color-sage) 130%);
+  background-color: #EEECE5;
+  background-image: url('./assets/brand/kmiss-texture.jpg');
+  background-size: cover;
+  background-position: center;
   padding: 24px;
+}
+.pantalla-login::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: rgba(255,255,255,.42);
+}
+.pantalla-login::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  width: min(62vw, 720px);
+  aspect-ratio: 1;
+  right: -9vw;
+  bottom: -20vw;
+  background: url('./assets/brand/kmiss-seal-black.png') center / contain no-repeat;
+  opacity: .055;
+  pointer-events: none;
 }
 
 .login-tarjeta {
   background: var(--color-surface);
-  border-radius: 16px;
-  padding: 44px 40px;
+  border: 1px solid rgba(200,155,69,.42);
+  border-top: 4px solid var(--color-gold);
+  border-radius: 8px;
+  padding: 38px 40px 42px;
   width: 100%;
-  max-width: 400px;
-  box-shadow: 0 20px 60px rgba(14, 46, 42, 0.35);
+  max-width: 420px;
+  box-shadow: 0 22px 64px rgba(17,17,16,.2);
 }
 
-.login-marca { text-align: center; margin-bottom: 32px; }
-.login-marca-icono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: var(--color-gold-tint);
-  color: var(--color-gold);
-  font-family: var(--fuente-display);
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 14px;
-}
+.login-marca { text-align: center; margin-bottom: 28px; }
+.login-logo { display: block; width: min(100%, 260px); height: auto; margin: 0 auto 8px; }
 .login-marca h1 { font-size: 26px; color: var(--color-primary); }
-.login-marca p { margin: 4px 0 0; color: var(--color-text-muted); font-size: 14px; }
+.login-marca p { margin: 0; color: var(--color-text-muted); font-size: 13px; letter-spacing: .02em; }
 
 .login-formulario { display: flex; flex-direction: column; gap: 16px; }
 .login-formulario label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
@@ -118,7 +132,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   height: 100vh;
   position: sticky;
   top: 0;
-  background: var(--color-primary-dark);
+  background: #151514;
   color: white;
   display: flex;
   flex-direction: column;
@@ -127,14 +141,8 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   overflow-y: auto;
 }
 
-.sidebar-marca { display: flex; align-items: center; gap: 10px; padding: 0 8px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
-.sidebar-marca-icono {
-  width: 34px; height: 34px; border-radius: 9px; background: var(--color-gold);
-  color: var(--color-primary-dark); display: flex; align-items: center; justify-content: center;
-  font-family: var(--fuente-display); font-weight: 700; font-size: 18px; flex-shrink: 0;
-}
-.sidebar-marca-nombre { margin: 0; font-family: var(--fuente-display); font-weight: 600; font-size: 16px; }
-.sidebar-marca-slogan { margin: 2px 0 0; font-size: 11px; color: rgba(255,255,255,0.55); }
+.sidebar-marca { display: flex; align-items: center; justify-content: center; padding: 0 6px 18px; border-bottom: 1px solid rgba(200,155,69,.25); margin-bottom: 18px; }
+.sidebar-logo { display: block; width: 164px; height: auto; }
 
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
 .sidebar-link {
@@ -143,8 +151,8 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   color: rgba(255,255,255,0.75); text-decoration: none;
   font-size: 14px; font-weight: 500;
 }
-.sidebar-link:hover { background: rgba(255,255,255,0.06); color: white; }
-.sidebar-link.active { background: var(--color-sage); color: white; }
+.sidebar-link:hover { background: rgba(255,255,255,0.065); color: white; }
+.sidebar-link.active { background: rgba(200,155,69,.17); color: #F4E3BE; box-shadow: inset 3px 0 0 var(--color-gold); }
 .sidebar-contador {
   margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -160,7 +168,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .sidebar-salir { background: none; border: none; color: rgba(255,255,255,0.6); padding: 6px; border-radius: 6px; }
 .sidebar-salir:hover { color: white; background: rgba(255,255,255,0.08); }
 
-.app-contenido { flex: 1; padding: 32px 40px; max-width: 1100px; }
+.app-contenido { flex: 1; min-width: 0; width: 100%; padding: 32px 40px; max-width: none; }
 
 /* ---------- Página genérica ---------- */
 .pagina-encabezado { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; }
@@ -558,54 +566,59 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 
 /* ---------- Identidad pública K-MISS ---------- */
 .tienda-pagina {
-  --color-bg: #f6f1ee;
-  --color-surface: #fffdfc;
-  --color-primary: #201d1c;
+  --color-bg: #f5f5f2;
+  --color-surface: #ffffff;
+  --color-primary: #242320;
   --color-primary-dark: #111111;
-  --color-sage: #a77b72;
-  --color-sage-tint: #f0dfdb;
-  --color-gold: #a98546;
-  --color-gold-tint: #f1e7d5;
-  --color-text: #282321;
-  --color-text-muted: #756b67;
-  --color-border: #e3d8d3;
-  --color-success: #6f806d;
-  --color-success-tint: #e6ebe4;
-  --sombra: 0 1px 2px rgba(32,29,28,.05), 0 8px 24px rgba(32,29,28,.06);
+  --color-sage: #667870;
+  --color-sage-tint: #e7ece9;
+  --color-gold: #c89b45;
+  --color-gold-tint: #f5ead3;
+  --color-text: #2b2a27;
+  --color-text-muted: #6d706c;
+  --color-border: #deded7;
+  --color-success: #5e7566;
+  --color-success-tint: #e5ece7;
+  --color-rose: #704d56;
+  --sombra: 0 1px 2px rgba(17,17,16,.05), 0 9px 26px rgba(17,17,16,.065);
 }
-.tienda-header { background: #111; padding: 14px 32px; }
-.tienda-monograma { width: 38px; height: 38px; border: 1px solid #bda06b; color: #d9c49a; display: inline-flex; align-items: center; justify-content: center; font-family: var(--fuente-display); font-size: 22px; }
-.tienda-marca h1 { font-size: 19px; font-weight: 500; letter-spacing: 0; }
-.tienda-marca p { color: #b9ada8; }
-.tienda-tabs { background: #252120; }
-.tienda-tabs button.activo { background: #a77b72; }
+.tienda-header { background: #111; padding: 9px 32px; border-bottom: 1px solid rgba(200,155,69,.36); }
+.tienda-logo { display: block; width: 142px; height: auto; }
+.tienda-tabs { background: #282724; border: 1px solid #373530; }
+.tienda-tabs button:hover { color: white; background: rgba(255,255,255,.07); }
+.tienda-tabs button.activo { background: var(--color-gold); color: #171511; }
 .tienda-header-acciones { display: flex; align-items: center; gap: 8px; }
 .tienda-social-boton, .tienda-carrito-boton { width: 40px; height: 40px; padding: 0; border: 1px solid #3d3734; border-radius: 6px; background: transparent; color: #f4ece8; display: inline-flex; align-items: center; justify-content: center; }
-.tienda-social-boton:hover, .tienda-carrito-boton:hover { background: #2d2826; color: white; }
-.tienda-carrito-contador { background: #d7bd8a; color: #171312; }
-.tienda-presentacion { min-height: 360px; display: flex; align-items: center; background: #eadbd6; border-bottom: 1px solid #d9c8c1; }
-.tienda-presentacion-interior { width: min(1100px, calc(100% - 48px)); margin: 0 auto; padding: 54px 0; }
-.tienda-eyebrow { margin: 0 0 10px; color: #8d675f; text-transform: uppercase; font-size: 12px; font-weight: 700; }
-.tienda-presentacion h1 { max-width: 680px; font-size: 48px; line-height: 1.05; font-weight: 500; color: #211c1a; }
-.tienda-presentacion-texto { max-width: 590px; margin: 16px 0 10px; font-size: 17px; line-height: 1.6; color: #665b57; }
-.tienda-tratamientos { margin: 0; color: #8b6b62; font-size: 13px; }.tienda-tratamientos span { color: #b2945e; padding: 0 6px; }
+.tienda-social-boton:hover, .tienda-carrito-boton:hover { background: #302e2a; color: #f1cf8a; }
+.tienda-carrito-contador { background: var(--color-gold); color: #171312; }
+.tienda-presentacion { position: relative; isolation: isolate; overflow: hidden; min-height: 360px; display: flex; align-items: center; background-color: #efeee9; background-image: url('./assets/brand/kmiss-texture.jpg'); background-size: cover; background-position: center; border-bottom: 1px solid #d6d4cb; }
+.tienda-presentacion::before { content: ''; position: absolute; inset: 0; z-index: -2; background: rgba(255,255,255,.38); }
+.tienda-presentacion::after { content: ''; position: absolute; z-index: -1; width: 430px; aspect-ratio: 1; right: max(24px, calc((100vw - 1120px) / 2)); top: 50%; transform: translateY(-50%); background: url('./assets/brand/kmiss-seal-black.png') center / contain no-repeat; opacity: .07; pointer-events: none; }
+.tienda-presentacion-interior { position: relative; z-index: 1; width: min(1100px, calc(100% - 48px)); margin: 0 auto; padding: 54px 0; }
+.tienda-eyebrow { margin: 0 0 10px; color: var(--color-rose); text-transform: uppercase; font-size: 12px; font-weight: 700; }
+.tienda-presentacion h1 { max-width: 680px; font-size: 48px; line-height: 1.05; font-weight: 500; color: #211f1b; }
+.tienda-presentacion-texto { max-width: 590px; margin: 16px 0 10px; font-size: 17px; line-height: 1.6; color: #5f605c; }
+.tienda-tratamientos { margin: 0; color: #596a63; font-size: 13px; }.tienda-tratamientos span { color: var(--color-gold); padding: 0 6px; }
 .tienda-presentacion-acciones { display: flex; align-items: center; gap: 18px; margin-top: 26px; }
-.tienda-presentacion-acciones a { color: #211c1a; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-weight: 600; font-size: 14px; }
-.tienda-presentacion-acciones a:hover { color: #8d675f; }
-.tienda-pagina .boton-primario { background: #211c1a; color: white; }
-.tienda-pagina .boton-primario:hover { background: #8d675f; }
+.tienda-presentacion-acciones a { color: #211f1b; display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-weight: 600; font-size: 14px; }
+.tienda-presentacion-acciones a:hover { color: var(--color-rose); }
+.tienda-pagina .boton-primario { background: #211f1b; color: white; }
+.tienda-pagina .boton-primario:hover { background: var(--color-gold); color: #171511; }
 .tienda-contenido { padding-top: 42px; }
 .tienda-seccion h2, .tienda-seccion-titulo h2 { font-weight: 500; }
-.tienda-tarjeta { border: 1px solid #eadfda; box-shadow: var(--sombra); }
-.tienda-tarjeta-imagen { aspect-ratio: 1; background: #eee6e2; }
-.servicio-publico-icono { background: #f0dfdb; color: #8d675f; }
+.tienda-tarjeta { border: 1px solid var(--color-border); box-shadow: var(--sombra); }
+.tienda-tarjeta-imagen { aspect-ratio: 1; background: #ecece7; }
+.servicio-publico-icono { background: var(--color-gold-tint); color: #8b6729; }
 .tienda-footer { background: #111; color: white; padding: 28px max(24px, calc((100% - 1100px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.tienda-footer-logo { display: block; width: 148px; height: auto; }
 .tienda-footer > div { display: flex; flex-direction: column; gap: 3px; }.tienda-footer strong { font-family: var(--fuente-display); font-size: 20px; font-weight: 500; }.tienda-footer span { color: #a99d98; font-size: 12px; }
 .tienda-footer nav { display: flex; gap: 20px; }.tienda-footer a { color: #d9c49a; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; }.tienda-footer a:hover { color: white; }
 
 @media (max-width: 720px) {
   .tienda-header { padding: 12px 14px; }
+  .tienda-logo { width: 118px; }
   .tienda-presentacion { min-height: 330px; }
+  .tienda-presentacion::after { width: 290px; right: -70px; opacity: .05; }
   .tienda-presentacion-interior { width: calc(100% - 32px); padding: 42px 0; }
   .tienda-presentacion h1 { font-size: 36px; }
   .tienda-presentacion-texto { font-size: 15px; }
@@ -619,7 +632,7 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 }
 
 @media (max-width: 480px) {
-  .tienda-marca p { display: none; }
+  .tienda-logo { width: 102px; }
   .tienda-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
   .tienda-tabs button { justify-content: center; min-width: 0; padding: 8px 6px; font-size: 12px; }
   .tienda-presentacion { min-height: 310px; }

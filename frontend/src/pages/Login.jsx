@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { APP_CONFIG } from '../config';
+import logoNegro from '../assets/brand/kmiss-logo-black.png';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -29,9 +30,8 @@ export default function Login() {
     <div className="pantalla-login">
       <div className="login-tarjeta">
         <div className="login-marca">
-          <span className="login-marca-icono">+</span>
-          <h1>{APP_CONFIG.nombreEmpresa}</h1>
-          <p>{APP_CONFIG.eslogan}</p>
+          <img className="login-logo" src={logoNegro} alt={`${APP_CONFIG.nombreEmpresa} - ${APP_CONFIG.eslogan}`} />
+          <p>Acceso al sistema administrativo</p>
         </div>
 
         <form onSubmit={manejarEnvio} className="login-formulario">
