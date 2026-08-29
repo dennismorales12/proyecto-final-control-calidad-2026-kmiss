@@ -5,6 +5,18 @@ import { APP_CONFIG } from '../config';
 import { urlArchivo } from '../config';
 import logoDorado from '../assets/brand/kmiss-logo-gold.png';
 
+function ImagenCatalogo({ ruta, nombre, Icono = Package }) {
+  const [fallo, setFallo] = useState(false);
+
+  useEffect(() => setFallo(false), [ruta]);
+
+  if (!ruta || fallo) {
+    return <span className="catalogo-imagen-fallback"><Icono size={24} /><small>Imagen no disponible</small></span>;
+  }
+
+  return <img src={urlArchivo(ruta)} alt={nombre} onError={() => setFallo(true)} />;
+}
+
 export default function Tienda() {
   const [productos, setProductos] = useState([]);
   const [servicios, setServicios] = useState([]);
@@ -161,10 +173,11 @@ export default function Tienda() {
           <section className="tienda-servicios-publicos">
             <div className="tienda-seccion-titulo"><div><h2>Servicios de K-MISS</h2><p>Selecciona un tratamiento para consultar horarios y solicitar tu cita.</p></div></div>
             {servicios.length === 0 ? <p className="texto-vacio">No hay servicios disponibles por el momento.</p> : <div className="tienda-grid">
-              {servicios.map((servicio) => <article key={servicio.id} className="tienda-tarjeta servicio-publico">
-                <button className="servicio-publico-imagen" onClick={() => setServicioDetalle(servicio)} aria-label={`Ver detalles de ${servicio.nombre}`}>{servicio.imagen_url ? <img src={urlArchivo(servicio.imagen_url)} alt={servicio.nombre} /> : <Stethoscope size={28} />}</button>
+              {servicios.map((servicio) => <article key={servicio.id} className="tienda-tarjeta servicio-publico" tabIndex="0">
+                <button className="servicio-publico-imagen" onClick={() => setServicioDetalle(servicio)} aria-label={`Ver detalles de ${servicio.nombre}`}><ImagenCatalogo ruta={servicio.imagen_url} nombre={servicio.nombre} Icono={Stethoscope} /></button>
                 <div className="tienda-tarjeta-info"><h3>{servicio.nombre}</h3>{servicio.especialidad && <span className="texto-tenue">{servicio.especialidad}</span>}<p className="tienda-tarjeta-descripcion">{servicio.descripcion}</p></div>
                 <div className="tienda-tarjeta-footer"><div><span className="precio">Q{Number(servicio.precio).toFixed(2)}</span><small>{servicio.duracion_minutos} min</small></div><div className="servicio-publico-acciones"><button className="boton-secundario" onClick={() => setServicioDetalle(servicio)}>Detalles</button><button className="boton-primario" onClick={() => reservarServicio(servicio)}><CalendarDays size={15} /> Reservar</button></div></div>
+                <div className="servicio-hover-detalle" role="tooltip"><strong>{servicio.nombre}</strong><p>{servicio.descripcion || 'Este servicio no tiene una descripción registrada todavía.'}</p><span>{servicio.especialidad || 'Servicio de K-MISS'} · {servicio.duracion_minutos} min</span></div>
               </article>)}
             </div>}
           </section>
@@ -209,7 +222,7 @@ export default function Tienda() {
                       return (
                         <article key={p.id} className="tienda-tarjeta producto-publico" tabIndex="0">
                           <div className="tienda-tarjeta-imagen">
-                            {p.imagen_url ? <img src={urlArchivo(p.imagen_url)} alt={p.nombre} /> : <span>Sin imagen</span>}
+                            <ImagenCatalogo ruta={p.imagen_url} nombre={p.nombre} />
                           </div>
                           <div className="tienda-tarjeta-info">
                             <h3>{p.nombre}</h3>
@@ -226,7 +239,7 @@ export default function Tienda() {
                               <Plus size={15} strokeWidth={2} /> {enCarrito ? `En carrito (${enCarrito.cantidad})` : 'Agregar'}
                             </button>
                           </div>
-                          <div className="producto-hover-detalle" role="tooltip"><strong>Detalles del artículo</strong><p>{p.descripcion || 'Este artículo no tiene detalles registrados todavía.'}</p><span>{nombreCategoria(p)} · Disponible: {p.stock_actual}</span></div>
+                          <div className="producto-hover-detalle" role="tooltip"><strong>{p.nombre}</strong><p>{p.descripcion || 'Este artículo no tiene detalles registrados todavía.'}</p><span>{nombreCategoria(p)} · Disponible: {p.stock_actual}</span></div>
                         </article>
                       );
                     })}
@@ -239,7 +252,7 @@ export default function Tienda() {
 
       {servicioDetalle && <div className="modal-fondo" onClick={() => setServicioDetalle(null)}><div className="modal servicio-detalle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-encabezado"><h2>{servicioDetalle.nombre}</h2><button className="modal-cerrar" onClick={() => setServicioDetalle(null)}><X size={18} /></button></div>
-        <div className="servicio-detalle-imagen">{servicioDetalle.imagen_url ? <img src={urlArchivo(servicioDetalle.imagen_url)} alt={servicioDetalle.nombre} /> : <Stethoscope size={42} />}</div>
+        <div className="servicio-detalle-imagen"><ImagenCatalogo ruta={servicioDetalle.imagen_url} nombre={servicioDetalle.nombre} Icono={Stethoscope} /></div>
         {servicioDetalle.especialidad && <span className="etiqueta">{servicioDetalle.especialidad}</span>}
         <p className="servicio-detalle-descripcion">{servicioDetalle.descripcion || 'Próximamente agregaremos más información sobre este servicio.'}</p>
         <div className="servicio-detalle-datos"><div><span>Duración</span><strong>{servicioDetalle.duracion_minutos} minutos</strong></div><div><span>Precio</span><strong>Q{Number(servicioDetalle.precio).toFixed(2)}</strong></div></div>

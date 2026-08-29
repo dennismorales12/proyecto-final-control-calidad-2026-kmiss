@@ -495,6 +495,8 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 }
 .tienda-tarjeta-imagen { width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: var(--color-bg); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 12px; }
 .tienda-tarjeta-imagen img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.catalogo-imagen-fallback { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 7px; width: 100%; height: 100%; color: var(--color-text-muted); }
+.catalogo-imagen-fallback small { font-size: 11px; }
 .tienda-tarjeta-info { min-width: 0; }
 .tienda-tarjeta-info h3 { font-size: 15px; color: var(--color-text); margin-bottom: 4px; overflow-wrap: anywhere; }
 .tienda-tarjeta-descripcion { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; font-size: 13px; line-height: 1.45; color: var(--color-text-muted); margin: 0 0 8px; overflow-wrap: anywhere; }
@@ -506,9 +508,11 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .precio-anterior { color: var(--color-text-muted); font-size: 12px; text-decoration: line-through; }
 .producto-publico { position: relative; overflow: hidden; outline: none; }
 .producto-publico:focus { box-shadow: 0 0 0 2px #a77b72, var(--sombra); }
-.producto-hover-detalle { position: absolute; z-index: 8; top: 12px; left: 12px; right: 12px; bottom: 72px; padding: 13px 14px; background: #211c1a; color: white; border-radius: 6px; box-shadow: 0 12px 28px rgba(0,0,0,.24); opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity 140ms ease, transform 140ms ease, visibility 140ms; pointer-events: none; overflow: hidden; }
-.producto-hover-detalle strong { display: block; font-family: var(--fuente-display); font-size: 15px; }.producto-hover-detalle p { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 8; margin: 5px 0 8px; color: #e6dbd6; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }.producto-hover-detalle span { color: #cbb28a; font-size: 11px; overflow-wrap: anywhere; }
-.producto-publico:hover .producto-hover-detalle, .producto-publico:focus .producto-hover-detalle { opacity: 1; visibility: visible; transform: translateY(0); }
+.producto-hover-detalle, .servicio-hover-detalle { position: absolute; z-index: 8; top: 12px; left: 12px; right: 12px; bottom: 72px; padding: 13px 14px; background: #211c1a; color: white; border-radius: 6px; box-shadow: 0 12px 28px rgba(0,0,0,.24); opacity: 0; visibility: hidden; transform: translateY(6px); transition: opacity 140ms ease, transform 140ms ease, visibility 140ms; pointer-events: none; overflow: hidden; display: flex; flex-direction: column; }
+.producto-hover-detalle strong, .servicio-hover-detalle strong { display: block; flex: 0 0 auto; font-family: var(--fuente-display); font-size: 15px; overflow-wrap: anywhere; }
+.producto-hover-detalle p, .servicio-hover-detalle p { min-height: 0; flex: 1; margin: 5px 0 8px; padding-right: 4px; color: #e6dbd6; font-size: 12px; line-height: 1.5; overflow-y: auto; overflow-wrap: anywhere; white-space: pre-line; overscroll-behavior: contain; scrollbar-width: thin; }
+.producto-hover-detalle span, .servicio-hover-detalle span { flex: 0 0 auto; color: #cbb28a; font-size: 11px; overflow-wrap: anywhere; }
+.producto-publico:hover .producto-hover-detalle, .producto-publico:focus .producto-hover-detalle, .servicio-publico:hover .servicio-hover-detalle, .servicio-publico:focus .servicio-hover-detalle { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
 .productos-filtros { display: flex; align-items: flex-start; gap: 18px; margin: 0 0 30px; padding: 14px 16px; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-surface); }
 .productos-filtros > span { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 7px; padding: 7px 0; color: var(--color-text); font-size: 13px; font-weight: 600; }
 .productos-filtros-opciones { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
@@ -529,6 +533,8 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
 .tienda-servicios-publicos .tienda-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
 .servicio-publico-imagen { width: 100%; aspect-ratio: 16 / 10; border: none; border-radius: 6px; overflow: hidden; background: #f0dfdb; color: #8d675f; display: flex; align-items: center; justify-content: center; padding: 0; }
 .servicio-publico-imagen img { width: 100%; height: 100%; object-fit: cover; }
+.servicio-publico { position: relative; overflow: hidden; outline: none; }
+.servicio-publico:focus { box-shadow: 0 0 0 2px var(--color-rose), var(--sombra); }
 .servicio-publico .tienda-tarjeta-footer { flex-wrap: wrap; }
 .servicio-publico .tienda-tarjeta-footer > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .servicio-publico .tienda-tarjeta-footer small { color: var(--color-text-muted); }
@@ -661,6 +667,6 @@ input[type="number"]::-webkit-outer-spin-button { appearance: none; -webkit-appe
   .producto-precios { align-items: baseline; flex-direction: row; gap: 8px; }
   .servicio-publico-acciones { width: 100%; }
   .servicio-publico-acciones button { flex: 1; justify-content: center; }
-  .producto-hover-detalle { bottom: 92px; }
+  .producto-hover-detalle, .servicio-hover-detalle { bottom: 92px; }
   .modal { width: calc(100% - 20px); max-height: calc(100vh - 20px); padding: 18px; overflow-y: auto; }
 }
