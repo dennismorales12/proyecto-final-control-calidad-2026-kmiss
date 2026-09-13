@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs><style>
+    .title{font:700 30px Arial;fill:#111}.h{font:700 20px Arial;fill:#fff}.t{font:16px Arial;fill:#222}.s{font:14px Arial;fill:#555}.box{fill:#f7f9fb;stroke:#1f4e78;stroke-width:3}.system{fill:#1f4e78;stroke:#173b5c;stroke-width:4}.actor{fill:#fff8e8;stroke:#c59a45;stroke-width:3}.line{stroke:#555;stroke-width:2.5;fill:none;marker-end:url(#arrow)}
+  </style><marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#555"/></marker></defs>
+  <text x="600" y="48" text-anchor="middle" class="title">Diagrama de contexto de KMISS</text>
+  <rect x="410" y="220" width="380" height="250" rx="18" class="system"/>
+  <text x="600" y="280" text-anchor="middle" class="h">KMISS Clínica Estética</text>
+  <text x="600" y="325" text-anchor="middle" class="h">Sistema web</text>
+  <text x="600" y="375" text-anchor="middle" class="h">Gestión clínica y comercial</text>
+  <text x="600" y="420" text-anchor="middle" class="h">Portal público y panel interno</text>
+  <rect x="55" y="110" width="260" height="115" rx="14" class="actor"/><text x="185" y="152" text-anchor="middle" class="t">Administrador</text><text x="185" y="183" text-anchor="middle" class="s">Configura y supervisa</text>
+  <rect x="55" y="295" width="260" height="115" rx="14" class="actor"/><text x="185" y="337" text-anchor="middle" class="t">Recepción</text><text x="185" y="368" text-anchor="middle" class="s">Opera citas ventas y pedidos</text>
+  <rect x="55" y="485" width="260" height="115" rx="14" class="actor"/><text x="185" y="527" text-anchor="middle" class="t">Médico</text><text x="185" y="558" text-anchor="middle" class="s">Consulta agenda y registra notas</text>
+  <rect x="885" y="295" width="260" height="115" rx="14" class="actor"/><text x="1015" y="337" text-anchor="middle" class="t">Cliente o paciente</text><text x="1015" y="368" text-anchor="middle" class="s">Solicita citas y pedidos</text>
+  <path d="M315 170 C365 170 365 260 410 280" class="line"/><path d="M315 350 L410 350" class="line"/><path d="M315 542 C365 542 365 450 410 430" class="line"/><path d="M885 350 L790 350" class="line"/>
+  <text x="600" y="650" text-anchor="middle" class="s">Alcance académico 2026 · Repositorio independiente de producción</text>
+</svg>
