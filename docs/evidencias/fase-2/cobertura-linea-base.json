@@ -1,0 +1,8 @@
+{
+  "fecha": "2026-09-13",
+  "comando": "jest --runInBand --coverage --collectCoverageFrom=src/**/*.js",
+  "pruebas_aprobadas": 7,
+  "pruebas_fallidas": 0,
+  "cobertura_lineas_porcentaje": 9.62,
+  "observacion": "Medición ejecutada sobre la etiqueta baseline-original-kmiss antes de agregar las pruebas de la fase 2."
+}

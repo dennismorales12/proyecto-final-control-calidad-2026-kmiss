@@ -1,12 +1,13 @@
 const express = require('express');
 const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
+const { enteroPositivo, validarDescuentoMonto } = require('../domain/validation');
 
 const router = express.Router();
 router.use(autenticar);
 
 // GET /api/ventas/dashboard?mes=YYYY-MM — indicadores comerciales del mes
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', permitirRoles('administrador', 'recepcion'), async (req, res) => {
   const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '')
     ? req.query.mes
     : new Date().toISOString().slice(0, 7);
@@ -63,7 +64,7 @@ router.get('/dashboard', async (req, res) => {
 });
 
 // GET /api/ventas — soporta ?fecha=YYYY-MM-DD
-router.get('/', async (req, res) => {
+router.get('/', permitirRoles('administrador', 'recepcion'), async (req, res) => {
   const { fecha } = req.query;
   try {
     let resultado;
@@ -94,7 +95,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/ventas/:id — detalle con líneas
-router.get('/:id', async (req, res) => {
+router.get('/:id', permitirRoles('administrador', 'recepcion'), async (req, res) => {
   try {
     const venta = await pool.query(
       `SELECT v.*, u.nombre AS vendedor_nombre, p.nombre_completo AS paciente_nombre
@@ -128,22 +129,32 @@ router.post('/', permitirRoles('administrador', 'recepcion'), async (req, res) =
   try {
     await client.query('BEGIN');
 
-    // Validar stock de productos antes de continuar
+    const itemsValidados = [];
     for (const item of items) {
+      const cantidad = enteroPositivo(item.cantidad);
+      if (Boolean(item.producto_id) === Boolean(item.servicio_id)) {
+        throw new Error('Cada línea debe identificar un producto o un servicio');
+      }
       if (item.producto_id) {
-        const prod = await client.query('SELECT stock_actual, nombre FROM productos WHERE id = $1 FOR UPDATE', [item.producto_id]);
+        const prod = await client.query('SELECT stock_actual, nombre, precio, activo FROM productos WHERE id = $1 FOR UPDATE', [item.producto_id]);
         if (prod.rows.length === 0) {
           throw new Error(`Producto no encontrado (id ${item.producto_id})`);
         }
-        if (prod.rows[0].stock_actual < item.cantidad) {
+        if (!prod.rows[0].activo) throw new Error(`Producto inactivo (id ${item.producto_id})`);
+        if (prod.rows[0].stock_actual < cantidad) {
           throw new Error(`Stock insuficiente de "${prod.rows[0].nombre}" (disponible: ${prod.rows[0].stock_actual})`);
         }
+        itemsValidados.push({ producto_id: item.producto_id, servicio_id: null, descripcion: prod.rows[0].nombre, cantidad, precio_unitario: Number(prod.rows[0].precio) });
+      } else {
+        const servicio = await client.query('SELECT nombre, precio, activo FROM servicios WHERE id=$1', [item.servicio_id]);
+        if (!servicio.rows[0] || !servicio.rows[0].activo) throw new Error(`Servicio no disponible (id ${item.servicio_id})`);
+        itemsValidados.push({ producto_id: null, servicio_id: item.servicio_id, descripcion: servicio.rows[0].nombre, cantidad, precio_unitario: Number(servicio.rows[0].precio) });
       }
     }
 
-    const subtotal = items.reduce((acc, i) => acc + (i.cantidad * i.precio_unitario), 0);
-    const descuentoFinal = descuento || 0;
-    const total = Math.max(subtotal - descuentoFinal, 0);
+    const subtotal = itemsValidados.reduce((acc, i) => acc + (i.cantidad * i.precio_unitario), 0);
+    const descuentoFinal = validarDescuentoMonto(descuento, subtotal);
+    const total = subtotal - descuentoFinal;
 
     const ventaResultado = await client.query(
       `INSERT INTO ventas (paciente_id, vendido_por, subtotal, descuento, total, metodo_pago)
@@ -152,7 +163,7 @@ router.post('/', permitirRoles('administrador', 'recepcion'), async (req, res) =
     );
     const ventaId = ventaResultado.rows[0].id;
 
-    for (const item of items) {
+    for (const item of itemsValidados) {
       const lineaSubtotal = item.cantidad * item.precio_unitario;
       await client.query(
         `INSERT INTO venta_detalles (venta_id, producto_id, servicio_id, descripcion, cantidad, precio_unitario, subtotal)
