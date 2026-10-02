@@ -354,6 +354,18 @@ ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_reservado_check;
 ALTER TABLE productos ADD CONSTRAINT productos_stock_reservado_check CHECK (stock_reservado >= 0);
 ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_reserva_no_supera_stock_check;
 ALTER TABLE productos ADD CONSTRAINT productos_reserva_no_supera_stock_check CHECK (stock_reservado <= stock_actual);
+ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_valores_no_negativos_check;
+ALTER TABLE productos ADD CONSTRAINT productos_valores_no_negativos_check
+    CHECK (precio >= 0 AND costo >= 0 AND stock_actual >= 0 AND stock_minimo >= 0);
+ALTER TABLE servicios DROP CONSTRAINT IF EXISTS servicios_valores_validos_check;
+ALTER TABLE servicios ADD CONSTRAINT servicios_valores_validos_check
+    CHECK (duracion_minutos > 0 AND precio >= 0);
+ALTER TABLE venta_detalles DROP CONSTRAINT IF EXISTS venta_detalles_valores_validos_check;
+ALTER TABLE venta_detalles ADD CONSTRAINT venta_detalles_valores_validos_check
+    CHECK (cantidad > 0 AND precio_unitario >= 0 AND subtotal >= 0);
+ALTER TABLE ventas DROP CONSTRAINT IF EXISTS ventas_valores_validos_check;
+ALTER TABLE ventas ADD CONSTRAINT ventas_valores_validos_check
+    CHECK (subtotal >= 0 AND descuento >= 0 AND total >= 0 AND descuento <= subtotal);
 
 -- Conserva el historial de pedidos anteriores vinculándolos a una ficha de cliente.
 INSERT INTO pacientes (nombre_completo, telefono, email, direccion, notas)
