@@ -1,0 +1,231 @@
+name: KMISS_$(Date:yyyyMMdd)_$(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - DEV
+      - QA
+      - main
+
+pr:
+  branches:
+    include:
+      - DEV
+      - QA
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: KMISS - Ambientes
+  - name: versionNode
+    value: '20.x'
+  - name: archivoAplicacion
+    value: '$(Build.ArtifactStagingDirectory)/kmiss-$(Build.BuildId).zip'
+
+stages:
+  - stage: Compilacion
+    displayName: Compilar aplicación
+    jobs:
+      - job: PrepararAplicacion
+        displayName: Preparar backend y frontend
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+
+          - task: NodeTool@0
+            displayName: Preparar Node.js 20
+            inputs:
+              versionSpec: $(versionNode)
+
+          - script: npm ci --prefix backend
+            displayName: Instalar dependencias del backend
+
+          - script: npm ci --include=dev --prefix frontend
+            displayName: Instalar dependencias del frontend
+
+          - script: npm run build --prefix frontend
+            displayName: Compilar aplicación web
+
+          - task: CopyFiles@2
+            displayName: Preparar archivos para despliegue
+            inputs:
+              SourceFolder: $(Build.SourcesDirectory)
+              Contents: |
+                **/*
+                !**/.git/**
+                !**/node_modules/**
+                !backend/coverage/**
+              TargetFolder: $(Build.ArtifactStagingDirectory)/paquete
+
+          - task: ArchiveFiles@2
+            displayName: Empaquetar aplicación
+            inputs:
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/paquete
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: $(archivoAplicacion)
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publicar paquete de la aplicación
+            inputs:
+              targetPath: $(archivoAplicacion)
+              artifact: aplicacion-kmiss
+
+  - stage: PruebasUnitarias
+    displayName: Ejecutar pruebas unitarias
+    dependsOn: Compilacion
+    jobs:
+      - job: PruebasBackend
+        displayName: Pruebas y cobertura del backend
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+
+          - task: NodeTool@0
+            displayName: Preparar Node.js 20
+            inputs:
+              versionSpec: $(versionNode)
+
+          - script: npm ci --prefix backend
+            displayName: Instalar dependencias de pruebas
+
+          - script: >-
+              npm test --prefix backend --
+              --runInBand
+              --coverage
+              --collectCoverageFrom=src/**/*.js
+              --coverageReporters=text
+              --coverageReporters=lcov
+              --coverageReporters=cobertura
+            displayName: Ejecutar pruebas y calcular cobertura
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publicar cobertura
+            inputs:
+              summaryFileLocation: $(Build.SourcesDirectory)/backend/coverage/cobertura-coverage.xml
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar evidencia de cobertura
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/backend/coverage
+              artifact: cobertura-backend
+
+  - stage: AnalisisEstatico
+    displayName: Analizar calidad del código
+    dependsOn: PruebasUnitarias
+    jobs:
+      - job: SonarCloud
+        displayName: SonarCloud y puerta de calidad
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+            fetchDepth: 0
+
+          - task: SonarCloudPrepare@3
+            displayName: Preparar análisis de SonarCloud
+            inputs:
+              SonarCloud: SonarCloud KMISS
+              organization: $(SONAR_ORGANIZATION)
+              scannerMode: cli
+              configMode: file
+
+          - task: SonarCloudAnalyze@3
+            displayName: Ejecutar análisis estático
+
+          - task: SonarCloudPublish@3
+            displayName: Verificar puerta de calidad
+            inputs:
+              pollingTimeoutSec: '300'
+
+  - stage: PruebasApi
+    displayName: Ejecutar pruebas de API
+    dependsOn: AnalisisEstatico
+    jobs:
+      - job: Newman
+        displayName: Validar servicios de KMISS
+        steps:
+          - checkout: self
+            displayName: Descargar colección Postman
+
+          - task: NodeTool@0
+            displayName: Preparar Node.js 20
+            inputs:
+              versionSpec: $(versionNode)
+
+          - script: |
+              mkdir -p "$(Agent.TempDirectory)/newman"
+              npx --yes newman@6.2.1 run postman/KMISS.postman_collection.json \
+                --env-var "baseUrl=$(URL_PRUEBAS_API)" \
+                --env-var "adminEmail=$(USUARIO_PRUEBAS_API)" \
+                --env-var "adminPassword=$(CLAVE_PRUEBAS_API)" \
+                --reporters cli,junit \
+                --reporter-junit-export "$(Agent.TempDirectory)/newman/resultados.xml"
+            displayName: Ejecutar colección con Newman
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de API
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: $(Agent.TempDirectory)/newman/resultados.xml
+              testRunTitle: Pruebas de API KMISS
+
+  - stage: Despliegue
+    displayName: Desplegar ambiente correspondiente
+    dependsOn: PruebasApi
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: Desarrollo
+        displayName: Desplegar en Desarrollo
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/DEV')
+        environment: KMISS - Desarrollo
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Desarrollo
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_DEV)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm start
+
+      - deployment: Calidad
+        displayName: Desplegar en Calidad
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/QA')
+        environment: KMISS - Calidad
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Calidad
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_QA)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm start
+
+      - deployment: Produccion
+        displayName: Desplegar en Producción
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+        environment: KMISS - Producción
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Producción
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_PROD)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm start
