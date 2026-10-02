@@ -1,4 +1,4 @@
-name: KMISS quality pipeline
+name: KMISS - Validacion de calidad y despliegue
 
 on:
   pull_request:
@@ -11,14 +11,15 @@ permissions:
   contents: read
 
 jobs:
-  quality:
+  validacion_calidad:
+    name: Compilacion, pruebas y analisis
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - name: Checkout
+      - name: Descargar codigo fuente
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20
+      - name: Preparar Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -27,32 +28,32 @@ jobs:
             backend/package-lock.json
             frontend/package-lock.json
 
-      - name: Install backend dependencies
+      - name: Instalar dependencias del backend
         run: npm ci --prefix backend
 
-      - name: Install frontend dependencies
+      - name: Instalar dependencias del frontend
         run: npm ci --include=dev --prefix frontend
 
-      - name: Compile frontend
+      - name: Compilar aplicacion web
         run: npm run build --prefix frontend
 
-      - name: Run unit tests and coverage
+      - name: Ejecutar pruebas unitarias y cobertura
         run: npm test --prefix backend -- --runInBand --silent --coverage --collectCoverageFrom=src/**/*.js --coverageReporters=text --coverageReporters=lcov
 
-      - name: Analyze with SonarCloud
+      - name: Analizar codigo con SonarCloud
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Verify SonarCloud quality gate
+      - name: Verificar puerta de calidad de SonarCloud
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: Run API collection against QA
+      - name: Ejecutar pruebas de API contra QA
         if: ${{ env.QA_BASE_URL != '' }}
         env:
           QA_BASE_URL: ${{ secrets.QA_BASE_URL }}
@@ -66,7 +67,7 @@ jobs:
           --reporters cli,junit
           --reporter-junit-export test-results/newman.xml
 
-      - name: Upload test evidence
+      - name: Publicar evidencias de pruebas
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -76,7 +77,7 @@ jobs:
             test-results
           if-no-files-found: warn
 
-      - name: Deploy Render production
+      - name: Desplegar aplicacion en produccion
         if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' && env.RENDER_DEPLOY_HOOK != '' }}
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
