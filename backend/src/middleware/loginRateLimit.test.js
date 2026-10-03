@@ -30,3 +30,12 @@ test('separa el conteo por correo', async () => {
   await request(app).post('/login').send({email:'a@b.com'});
   expect((await request(app).post('/login').send({email:'c@d.com'})).status).toBe(200);
 });
+
+test('mantiene acotada la cantidad de claves almacenadas', async () => {
+  const app=crearApp({maxIntentos:1,ventanaMs:60000,maxClaves:2});
+  await request(app).post('/login').send({email:'primero@b.com'});
+  await request(app).post('/login').send({email:'segundo@b.com'});
+  await request(app).post('/login').send({email:'tercero@b.com'});
+  const respuesta=await request(app).post('/login').send({email:'primero@b.com'});
+  expect(respuesta.status).toBe(200);
+});

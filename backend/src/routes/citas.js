@@ -317,12 +317,14 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        await validarDisponibilidad(client, {
-          medicoId: medico_id,
-          sedeId: sede.rows[0].id,
-          servicioId: servicio.rows[0].id,
-          fechaHora: fecha_hora,
-        });
+        if (medico_id) {
+          await validarDisponibilidad(client, {
+            medicoId: medico_id,
+            sedeId: sede.rows[0].id,
+            servicioId: servicio.rows[0].id,
+            fechaHora: fecha_hora,
+          });
+        }
         await client.query(
           `INSERT INTO citas (paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, estado, creado_por)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
