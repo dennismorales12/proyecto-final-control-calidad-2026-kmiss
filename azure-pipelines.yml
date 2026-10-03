@@ -34,10 +34,10 @@ stages:
           - checkout: self
             displayName: Descargar código fuente
 
-          - task: NodeTool@0
+          - task: UseNode@1
             displayName: Preparar Node.js 20
             inputs:
-              versionSpec: $(versionNode)
+              version: $(versionNode)
 
           - script: npm ci --prefix backend
             displayName: Instalar dependencias del backend
@@ -87,10 +87,10 @@ stages:
           - checkout: self
             displayName: Descargar código fuente
 
-          - task: NodeTool@0
+          - task: UseNode@1
             displayName: Preparar Node.js 20
             inputs:
-              versionSpec: $(versionNode)
+              version: $(versionNode)
 
           - script: npm ci --prefix backend
             displayName: Instalar dependencias de pruebas del backend
@@ -175,10 +175,10 @@ stages:
           - checkout: self
             displayName: Descargar colección Postman
 
-          - task: NodeTool@0
+          - task: UseNode@1
             displayName: Preparar Node.js 20
             inputs:
-              versionSpec: $(versionNode)
+              version: $(versionNode)
 
           - script: |
               echo "##vso[task.setvariable variable=JWT_CI;issecret=true]$(openssl rand -hex 32)"
