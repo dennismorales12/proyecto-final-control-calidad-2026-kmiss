@@ -33,6 +33,35 @@ async function sembrarDatos() {
        WHERE NOT EXISTS (SELECT 1 FROM servicios s WHERE LOWER(s.nombre)=LOWER(datos.nombre))`
     );
 
+    console.log('Creando inventario mínimo de prueba...');
+    await pool.query(
+      `INSERT INTO categorias_productos (nombre, orden)
+       SELECT 'Cuidado personal', 1
+       WHERE NOT EXISTS (
+         SELECT 1 FROM categorias_productos WHERE LOWER(nombre) = LOWER('Cuidado personal')
+       )`
+    );
+    await pool.query(
+      `INSERT INTO productos
+        (nombre, descripcion, categoria, categoria_id, precio, costo, stock_actual, stock_minimo, unidad_medida, activo)
+       SELECT
+        'Gel antibacterial 250 ml',
+        'Producto de demostración para validar el flujo de pedidos',
+        c.nombre,
+        c.id,
+        25.00,
+        12.50,
+        100,
+        10,
+        'unidad',
+        TRUE
+       FROM categorias_productos c
+       WHERE LOWER(c.nombre) = LOWER('Cuidado personal')
+         AND NOT EXISTS (
+           SELECT 1 FROM productos WHERE LOWER(nombre) = LOWER('Gel antibacterial 250 ml')
+         )`
+    );
+
     console.log('Creando paciente de ejemplo...');
     await pool.query(
       `INSERT INTO pacientes (nit, nombre_completo, telefono, email)
