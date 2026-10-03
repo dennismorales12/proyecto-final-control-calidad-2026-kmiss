@@ -1,5 +1,5 @@
 {
-  "name": "vitalis-backend",
+  "name": "kmiss-backend",
   "version": "1.0.0",
   "description": "API backend del sistema de gestión de clínica Vitalis",
   "main": "src/server.js",

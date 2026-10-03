@@ -23,7 +23,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 app.get('/health', (req, res) => {
-  res.json({ estado: 'ok', servicio: 'vitalis-backend', timestamp: new Date().toISOString() });
+  res.json({ estado: 'ok', servicio: 'kmiss-backend', timestamp: new Date().toISOString() });
 });
 
 app.use('/api/media', mediaRoutes);
