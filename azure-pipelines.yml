@@ -82,7 +82,7 @@ stages:
     dependsOn: Compilacion
     jobs:
       - job: PruebasBackend
-        displayName: Pruebas y cobertura del backend
+        displayName: Pruebas de backend y frontend
         steps:
           - checkout: self
             displayName: Descargar código fuente
@@ -93,7 +93,10 @@ stages:
               versionSpec: $(versionNode)
 
           - script: npm ci --prefix backend
-            displayName: Instalar dependencias de pruebas
+            displayName: Instalar dependencias de pruebas del backend
+
+          - script: npm ci --prefix frontend
+            displayName: Instalar dependencias de pruebas del frontend
 
           - script: >-
               npm test --prefix backend --
@@ -104,6 +107,9 @@ stages:
               --coverageReporters=lcov
               --coverageReporters=cobertura
             displayName: Ejecutar pruebas y calcular cobertura
+
+          - script: npm test --prefix frontend --if-present
+            displayName: Ejecutar pruebas unitarias del frontend
 
           - task: PublishCodeCoverageResults@2
             displayName: Publicar cobertura
