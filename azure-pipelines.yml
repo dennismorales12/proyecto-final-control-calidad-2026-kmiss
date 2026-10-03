@@ -293,3 +293,31 @@ stages:
                     appName: $(AZURE_WEBAPP_PROD)
                     package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
                     startUpCommand: npm start
+
+  - stage: PruebasCarga
+    displayName: Ejecutar pruebas de carga en QA
+    dependsOn: Despliegue
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/QA'))
+    jobs:
+      - job: K6
+        displayName: Validar capacidad de los endpoints críticos
+        steps:
+          - checkout: self
+            displayName: Descargar escenario de carga
+
+          - script: |
+              mkdir -p "$(Build.SourcesDirectory)/load/resultados"
+              docker run --rm \
+                -e BASE_URL="https://$(AZURE_WEBAPP_QA).azurewebsites.net" \
+                -v "$(Build.SourcesDirectory)/load:/scripts" \
+                grafana/k6:0.54.0 run \
+                --summary-export=/scripts/resultados/resumen-k6.json \
+                /scripts/kmiss-load.js
+            displayName: Ejecutar rampa de 50 usuarios durante cinco minutos
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar métricas de carga
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/load/resultados
+              artifact: resultados-carga-k6
