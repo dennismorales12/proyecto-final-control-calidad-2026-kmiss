@@ -59,6 +59,9 @@ stages:
                 !backend/coverage/**
               TargetFolder: $(Build.ArtifactStagingDirectory)/paquete
 
+          - script: npm ci --omit=dev --prefix "$(Build.ArtifactStagingDirectory)/paquete/backend"
+            displayName: Incluir dependencias productivas del backend
+
           - task: ArchiveFiles@2
             displayName: Empaquetar aplicación
             inputs:
@@ -125,7 +128,13 @@ stages:
             displayName: Descargar código fuente
             fetchDepth: 0
 
-          - task: SonarCloudPrepare@3
+          - task: DownloadPipelineArtifact@2
+            displayName: Recuperar cobertura del backend
+            inputs:
+              artifactName: cobertura-backend
+              targetPath: $(Build.SourcesDirectory)/backend/coverage
+
+          - task: SonarCloudPrepare@3.4.3
             displayName: Preparar análisis de SonarCloud
             inputs:
               SonarCloud: SonarCloud KMISS
@@ -133,10 +142,10 @@ stages:
               scannerMode: cli
               configMode: file
 
-          - task: SonarCloudAnalyze@3
+          - task: SonarCloudAnalyze@3.4.3
             displayName: Ejecutar análisis estático
 
-          - task: SonarCloudPublish@3
+          - task: SonarCloudPublish@3.4.3
             displayName: Verificar puerta de calidad
             inputs:
               pollingTimeoutSec: '300'
@@ -146,7 +155,16 @@ stages:
     dependsOn: AnalisisEstatico
     jobs:
       - job: Newman
-        displayName: Validar servicios de KMISS
+        displayName: Validar el candidato de KMISS
+        services:
+          postgres:
+            image: postgres:16-alpine
+            ports:
+              - 5432:5432
+            env:
+              POSTGRES_DB: kmiss_ci
+              POSTGRES_USER: postgres
+              POSTGRES_HOST_AUTH_METHOD: trust
         steps:
           - checkout: self
             displayName: Descargar colección Postman
@@ -157,14 +175,54 @@ stages:
               versionSpec: $(versionNode)
 
           - script: |
+              echo "##vso[task.setvariable variable=JWT_CI;issecret=true]$(openssl rand -hex 32)"
+            displayName: Generar secreto temporal de integración
+
+          - script: |
+              npm ci --prefix backend
+              npm run init-db --prefix backend
+              npm run seed --prefix backend
+            displayName: Preparar API y base temporal
+            env:
+              DATABASE_URL: postgresql://postgres@localhost:5432/kmiss_ci
+              DEMO_PASSWORD: $(CLAVE_PRUEBAS_API)
+              JWT_SECRET: $(JWT_CI)
+              NODE_ENV: test
+
+          - script: |
+              nohup npm start --prefix backend > "$(Agent.TempDirectory)/kmiss-api.log" 2>&1 &
+              for intento in {1..30}; do
+                if curl --fail --silent http://127.0.0.1:4000/health > /dev/null; then
+                  exit 0
+                fi
+                sleep 2
+              done
+              cat "$(Agent.TempDirectory)/kmiss-api.log"
+              exit 1
+            displayName: Iniciar candidato y verificar disponibilidad
+            env:
+              DATABASE_URL: postgresql://postgres@localhost:5432/kmiss_ci
+              DEMO_PASSWORD: $(CLAVE_PRUEBAS_API)
+              JWT_SECRET: $(JWT_CI)
+              NODE_ENV: test
+
+          - script: |
               mkdir -p "$(Agent.TempDirectory)/newman"
-              npx --yes newman@6.2.1 run postman/KMISS.postman_collection.json \
-                --env-var "baseUrl=$(URL_PRUEBAS_API)" \
+              npm install --prefix "$(Agent.TempDirectory)/newman-cli" --ignore-scripts newman@6.2.1
+              "$(Agent.TempDirectory)/newman-cli/node_modules/.bin/newman" run postman/KMISS.postman_collection.json \
+                --env-var "baseUrl=http://127.0.0.1:4000" \
                 --env-var "adminEmail=$(USUARIO_PRUEBAS_API)" \
                 --env-var "adminPassword=$(CLAVE_PRUEBAS_API)" \
                 --reporters cli,junit \
                 --reporter-junit-export "$(Agent.TempDirectory)/newman/resultados.xml"
             displayName: Ejecutar colección con Newman
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar bitácora de la API candidata
+            condition: always()
+            inputs:
+              targetPath: $(Agent.TempDirectory)/kmiss-api.log
+              artifact: bitacora-api-candidata
 
           - task: PublishTestResults@2
             displayName: Publicar resultados de API
@@ -194,7 +252,7 @@ stages:
                     appType: webAppLinux
                     appName: $(AZURE_WEBAPP_DEV)
                     package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
-                    startUpCommand: npm start
+                    startUpCommand: npm run azure-start
 
       - deployment: Calidad
         displayName: Desplegar en Calidad
@@ -211,7 +269,7 @@ stages:
                     appType: webAppLinux
                     appName: $(AZURE_WEBAPP_QA)
                     package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
-                    startUpCommand: npm start
+                    startUpCommand: npm run azure-start
 
       - deployment: Produccion
         displayName: Desplegar en Producción

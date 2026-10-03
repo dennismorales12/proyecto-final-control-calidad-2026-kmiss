@@ -16,7 +16,7 @@ export const options = {
   },
 };
 
-export default function () {
+export default function ejecutarEscenarioCarga() {
   const health = http.get(`${baseUrl}/health`, { tags: { endpoint: 'health' } });
   check(health, {
     'health responde 200': (r) => r.status === 200,
