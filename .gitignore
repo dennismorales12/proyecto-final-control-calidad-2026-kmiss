@@ -1,5 +1,9 @@
 node_modules/
 frontend/dist/
+coverage/
+.nyc_output/
+test-results/
+k6-results/
 .env
 .env.*
 !.env.example

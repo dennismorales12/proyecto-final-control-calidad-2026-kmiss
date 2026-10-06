@@ -36,6 +36,10 @@ router.get('/', async (req, res) => {
 // GET /api/pacientes/:id/historial — ficha comercial y clínica del paciente
 router.get('/:id/historial', async (req, res) => {
   try {
+    const paciente = await pool.query(`SELECT ${COLUMNAS_PACIENTE} FROM pacientes WHERE id = $1`, [req.params.id]);
+    if (paciente.rows.length === 0) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
     const [citas, ventas, pedidos] = await Promise.all([
       pool.query(
         `SELECT c.id, c.fecha_hora, c.estado, c.motivo_consulta, c.notas_medico,
@@ -65,7 +69,7 @@ router.get('/:id/historial', async (req, res) => {
         [req.params.id]
       ),
     ]);
-    res.json({ citas: citas.rows, ventas: ventas.rows, pedidos: pedidos.rows });
+    res.json({ paciente: paciente.rows[0], citas: citas.rows, ventas: ventas.rows, pedidos: pedidos.rows });
   } catch (error) {
     console.error('Error al obtener historial del paciente:', error);
     res.status(500).json({ error: 'Error al obtener el historial del paciente' });

@@ -4,6 +4,7 @@ const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { validarDisponibilidad } = require('../agenda');
+const { validarTransicionCita } = require('../domain/stateMachines');
 
 const router = express.Router();
 router.use(autenticar);
@@ -147,19 +148,29 @@ router.put('/:id/estado', async (req, res) => {
     return res.status(403).json({ error: 'Solo recepcion puede confirmar una solicitud' });
   }
 
+  const client = await pool.connect();
   try {
-    const resultado = await pool.query(
-      `UPDATE citas SET estado = $1, actualizado_en = NOW() WHERE id = $2 RETURNING id`,
-      [estado, req.params.id]
-    );
-    if (resultado.rows.length === 0) {
+    await client.query('BEGIN');
+    const actual = await client.query('SELECT estado, medico_id FROM citas WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!actual.rows[0]) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
-    const citaCompleta = await pool.query(`${SELECT_BASE} WHERE c.id = $1`, [req.params.id]);
+    if (req.usuario.rol === 'medico' && Number(actual.rows[0].medico_id) !== Number(req.usuario.id)) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'No puedes modificar una cita asignada a otro médico' });
+    }
+    validarTransicionCita(actual.rows[0].estado, estado);
+    await client.query('UPDATE citas SET estado=$1, actualizado_en=NOW() WHERE id=$2', [estado, req.params.id]);
+    const citaCompleta = await client.query(`${SELECT_BASE} WHERE c.id = $1`, [req.params.id]);
+    await client.query('COMMIT');
     res.json(citaCompleta.rows[0]);
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('Error al actualizar estado de cita:', error);
-    res.status(500).json({ error: 'Error al actualizar cita' });
+    res.status(400).json({ error: error.message || 'Error al actualizar cita' });
+  } finally {
+    client.release();
   }
 });
 
@@ -171,6 +182,13 @@ router.put('/:id', permitirRoles('administrador', 'recepcion', 'medico'), async 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    if (req.usuario.rol === 'medico') {
+      const propia = await client.query('SELECT 1 FROM citas WHERE id=$1 AND medico_id=$2', [req.params.id, req.usuario.id]);
+      if (!propia.rows[0]) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'No puedes modificar una cita asignada a otro médico' });
+      }
+    }
     await validarDisponibilidad(client, { medicoId: medicoFinal, sedeId: sede_id, servicioId: servicio_id, fechaHora: fecha_hora, excluirCitaId: req.params.id });
     const resultado = await client.query(
       `UPDATE citas SET
@@ -296,11 +314,29 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
         if (medico.rows.length > 0) medico_id = medico.rows[0].id;
       }
 
-      await pool.query(
-        `INSERT INTO citas (paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, estado, creado_por)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-        [paciente.rows[0].id, servicio.rows[0].id, medico_id, sede.rows[0].id, fecha_hora, motivo_consulta, estado, req.usuario.id]
-      );
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        if (medico_id) {
+          await validarDisponibilidad(client, {
+            medicoId: medico_id,
+            sedeId: sede.rows[0].id,
+            servicioId: servicio.rows[0].id,
+            fechaHora: fecha_hora,
+          });
+        }
+        await client.query(
+          `INSERT INTO citas (paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, estado, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [paciente.rows[0].id, servicio.rows[0].id, medico_id, sede.rows[0].id, fecha_hora, motivo_consulta, estado, req.usuario.id]
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
       creadas++;
     } catch (error) {
       errores.push(`Fila ${numeroFila}: ${error.message}`);
