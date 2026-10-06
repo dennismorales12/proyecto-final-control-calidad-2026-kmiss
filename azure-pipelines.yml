@@ -1,0 +1,385 @@
+name: KMISS_$(Date:yyyyMMdd)_$(Rev:r)
+
+trigger:
+  branches:
+    include:
+      - DEV
+      - QA
+      - main
+
+pr:
+  branches:
+    include:
+      - DEV
+      - QA
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: KMISS - Ambientes
+  - name: versionNode
+    value: '20.x'
+  - name: archivoAplicacion
+    value: '$(Build.ArtifactStagingDirectory)/kmiss-$(Build.BuildId).zip'
+  - name: revisionLineaBase
+    value: '55c90b29d479102c6de16448dd2bd6d77845f148'
+
+stages:
+  - stage: Compilacion
+    displayName: Compilar aplicación
+    jobs:
+      - job: PrepararAplicacion
+        displayName: Preparar backend y frontend
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+
+          - task: UseNode@1
+            displayName: Preparar Node.js 20
+            inputs:
+              version: $(versionNode)
+
+          - script: npm ci --prefix backend
+            displayName: Instalar dependencias del backend
+
+          - script: npm ci --include=dev --prefix frontend
+            displayName: Instalar dependencias del frontend
+
+          - script: npm run build --prefix frontend
+            displayName: Compilar aplicación web
+
+          - task: CopyFiles@2
+            displayName: Preparar archivos para despliegue
+            inputs:
+              SourceFolder: $(Build.SourcesDirectory)
+              Contents: |
+                **/*
+                !**/.git/**
+                !**/node_modules/**
+                !backend/coverage/**
+              TargetFolder: $(Build.ArtifactStagingDirectory)/paquete
+
+          - script: npm ci --omit=dev --prefix "$(Build.ArtifactStagingDirectory)/paquete/backend"
+            displayName: Incluir dependencias productivas del backend
+
+          - task: ArchiveFiles@2
+            displayName: Empaquetar aplicación
+            inputs:
+              rootFolderOrFile: $(Build.ArtifactStagingDirectory)/paquete
+              includeRootFolder: false
+              archiveType: zip
+              archiveFile: $(archivoAplicacion)
+              replaceExistingArchive: true
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publicar paquete de la aplicación
+            inputs:
+              targetPath: $(archivoAplicacion)
+              artifact: aplicacion-kmiss
+
+  - stage: PruebasUnitarias
+    displayName: Ejecutar pruebas unitarias
+    dependsOn: Compilacion
+    jobs:
+      - job: PruebasBackend
+        displayName: Pruebas de backend y frontend
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+            fetchDepth: 0
+
+          - task: UseNode@1
+            displayName: Preparar Node.js 20
+            inputs:
+              version: $(versionNode)
+
+          - script: npm ci --prefix backend
+            displayName: Instalar dependencias de pruebas del backend
+
+          - script: npm ci --prefix frontend
+            displayName: Instalar dependencias de pruebas del frontend
+
+          - script: |
+              git worktree add --detach "$(Agent.TempDirectory)/kmiss-linea-base" "$(revisionLineaBase)"
+              npm ci --prefix "$(Agent.TempDirectory)/kmiss-linea-base/backend"
+              npm test --prefix "$(Agent.TempDirectory)/kmiss-linea-base/backend" -- --runInBand --silent --coverage --collectCoverageFrom=src/**/*.js --coverageReporters=json-summary --coverageReporters=lcov
+            displayName: Medir línea base de los módulos críticos
+
+          - script: npm run test:ci --prefix backend
+            displayName: Ejecutar pruebas y calcular cobertura
+            env:
+              JEST_JUNIT_OUTPUT_DIR: $(Build.SourcesDirectory)/backend/test-results
+              JEST_JUNIT_OUTPUT_NAME: backend.xml
+
+          - script: npm run test:ci --prefix frontend
+            displayName: Ejecutar pruebas unitarias del frontend
+
+          - script: >-
+              node scripts/comparar-cobertura.cjs
+              "$(Agent.TempDirectory)/kmiss-linea-base/backend/coverage/coverage-summary.json"
+              backend/coverage/coverage-summary.json
+              test-results/cobertura-critica
+            displayName: Comparar incremento de cobertura en módulos críticos
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de Jest
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: backend/test-results/backend.xml
+              testRunTitle: Pruebas backend KMISS
+              failTaskOnFailedTests: true
+              failTaskOnMissingResultsFile: true
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de Vitest
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: frontend/test-results/frontend.xml
+              testRunTitle: Pruebas frontend KMISS
+              failTaskOnFailedTests: true
+              failTaskOnMissingResultsFile: true
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publicar cobertura
+            condition: always()
+            inputs:
+              summaryFileLocation: |
+                $(Build.SourcesDirectory)/backend/coverage/cobertura-coverage.xml
+                $(Build.SourcesDirectory)/frontend/coverage/cobertura-coverage.xml
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar evidencia de cobertura
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/backend/coverage
+              artifact: cobertura-backend
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar cobertura del frontend
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/frontend/coverage
+              artifact: cobertura-frontend
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar comparativa de módulos críticos
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/test-results/cobertura-critica
+              artifact: cobertura-modulos-criticos
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar medición de línea base
+            condition: always()
+            inputs:
+              targetPath: $(Agent.TempDirectory)/kmiss-linea-base/backend/coverage
+              artifact: cobertura-linea-base
+
+  - stage: AnalisisEstatico
+    displayName: Analizar calidad del código
+    dependsOn: PruebasUnitarias
+    jobs:
+      - job: SonarCloud
+        displayName: SonarCloud y puerta de calidad
+        steps:
+          - checkout: self
+            displayName: Descargar código fuente
+            fetchDepth: 0
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Recuperar cobertura del backend
+            inputs:
+              artifactName: cobertura-backend
+              targetPath: $(Build.SourcesDirectory)/backend/coverage
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Recuperar cobertura del frontend
+            inputs:
+              artifactName: cobertura-frontend
+              targetPath: $(Build.SourcesDirectory)/frontend/coverage
+
+          - task: SonarCloudPrepare@4
+            displayName: Preparar análisis de SonarCloud
+            inputs:
+              SonarCloud: SonarCloud KMISS
+              organization: $(SONAR_ORGANIZATION)
+              scannerMode: cli
+              configMode: file
+
+          - task: SonarCloudAnalyze@4
+            displayName: Ejecutar análisis estático
+
+          - task: SonarCloudPublish@4
+            displayName: Verificar puerta de calidad
+            inputs:
+              pollingTimeoutSec: '300'
+
+  - stage: PruebasApi
+    displayName: Ejecutar pruebas de API
+    dependsOn: AnalisisEstatico
+    jobs:
+      - job: Newman
+        displayName: Validar el candidato de KMISS
+        services:
+          postgres:
+            image: postgres:16-alpine
+            ports:
+              - 5432:5432
+            env:
+              POSTGRES_DB: kmiss_ci
+              POSTGRES_USER: postgres
+              POSTGRES_HOST_AUTH_METHOD: trust
+        steps:
+          - checkout: self
+            displayName: Descargar colección Postman
+
+          - task: UseNode@1
+            displayName: Preparar Node.js 20
+            inputs:
+              version: $(versionNode)
+
+          - script: |
+              echo "##vso[task.setvariable variable=JWT_CI;issecret=true]$(openssl rand -hex 32)"
+            displayName: Generar secreto temporal de integración
+
+          - script: |
+              npm ci --prefix backend
+              npm run init-db --prefix backend
+              npm run seed --prefix backend
+            displayName: Preparar API y base temporal
+            env:
+              DATABASE_URL: postgresql://postgres@localhost:5432/kmiss_ci
+              DEMO_PASSWORD: $(CLAVE_PRUEBAS_API)
+              JWT_SECRET: $(JWT_CI)
+              NODE_ENV: test
+
+          - script: |
+              nohup npm start --prefix backend > "$(Agent.TempDirectory)/kmiss-api.log" 2>&1 &
+              for intento in {1..30}; do
+                if curl --fail --silent http://127.0.0.1:4000/health > /dev/null; then
+                  exit 0
+                fi
+                sleep 2
+              done
+              cat "$(Agent.TempDirectory)/kmiss-api.log"
+              exit 1
+            displayName: Iniciar candidato y verificar disponibilidad
+            env:
+              DATABASE_URL: postgresql://postgres@localhost:5432/kmiss_ci
+              DEMO_PASSWORD: $(CLAVE_PRUEBAS_API)
+              JWT_SECRET: $(JWT_CI)
+              NODE_ENV: test
+
+          - script: |
+              mkdir -p "$(Agent.TempDirectory)/newman"
+              npm install --prefix "$(Agent.TempDirectory)/newman-cli" --ignore-scripts newman@6.2.1
+              "$(Agent.TempDirectory)/newman-cli/node_modules/.bin/newman" run postman/KMISS.postman_collection.json \
+                --env-var "baseUrl=http://127.0.0.1:4000" \
+                --env-var "adminEmail=$(USUARIO_PRUEBAS_API)" \
+                --env-var "adminPassword=$(CLAVE_PRUEBAS_API)" \
+                --reporters cli,junit \
+                --reporter-junit-export "$(Agent.TempDirectory)/newman/resultados.xml"
+            displayName: Ejecutar colección con Newman
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar bitácora de la API candidata
+            condition: always()
+            inputs:
+              targetPath: $(Agent.TempDirectory)/kmiss-api.log
+              artifact: bitacora-api-candidata
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de API
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: $(Agent.TempDirectory)/newman/resultados.xml
+              testRunTitle: Pruebas de API KMISS
+
+  - stage: Despliegue
+    displayName: Desplegar ambiente correspondiente
+    dependsOn: PruebasApi
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+    jobs:
+      - deployment: Desarrollo
+        displayName: Desplegar en Desarrollo
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/DEV')
+        environment: KMISS - Desarrollo
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Desarrollo
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_DEV)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm run azure-start
+
+      - deployment: Calidad
+        displayName: Desplegar en Calidad
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/QA')
+        environment: KMISS - Calidad
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Calidad
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_QA)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm run azure-start
+
+      - deployment: Produccion
+        displayName: Desplegar en Producción
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+        environment: KMISS - Producción
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Publicar aplicación de Producción
+                  inputs:
+                    azureSubscription: Conexión Azure KMISS
+                    appType: webAppLinux
+                    appName: $(AZURE_WEBAPP_PROD)
+                    package: $(Pipeline.Workspace)/aplicacion-kmiss/*.zip
+                    startUpCommand: npm start
+
+  - stage: PruebasCarga
+    displayName: Ejecutar pruebas de carga en QA
+    dependsOn: Despliegue
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/QA'))
+    jobs:
+      - job: K6
+        displayName: Validar capacidad de los endpoints críticos
+        steps:
+          - checkout: self
+            displayName: Descargar escenario de carga
+
+          - script: |
+              mkdir -p "$(Build.SourcesDirectory)/load/resultados"
+              docker run --rm \
+                -e BASE_URL="https://$(AZURE_WEBAPP_QA).azurewebsites.net" \
+                -v "$(Build.SourcesDirectory)/load:/scripts" \
+                grafana/k6:0.54.0 run \
+                --summary-export=/scripts/resultados/resumen-k6.json \
+                /scripts/kmiss-load.js
+            displayName: Ejecutar rampa de 50 usuarios durante cinco minutos
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar métricas de carga
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/load/resultados
+              artifact: resultados-carga-k6

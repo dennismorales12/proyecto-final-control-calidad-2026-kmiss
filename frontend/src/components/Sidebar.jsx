@@ -54,10 +54,12 @@ export default function Sidebar() {
           <Package size={18} strokeWidth={1.75} />
           <span>Inventario</span>
         </NavLink>
-        <NavLink to="/ventas" className="sidebar-link">
-          <ShoppingCart size={18} strokeWidth={1.75} />
-          <span>Ventas</span>
-        </NavLink>
+        {['administrador', 'recepcion'].includes(usuario?.rol) && (
+          <NavLink to="/ventas" className="sidebar-link">
+            <ShoppingCart size={18} strokeWidth={1.75} />
+            <span>Ventas</span>
+          </NavLink>
+        )}
         {['administrador', 'recepcion'].includes(usuario?.rol) && (
           <NavLink to="/pedidos" className="sidebar-link">
             <ClipboardList size={18} strokeWidth={1.75} />

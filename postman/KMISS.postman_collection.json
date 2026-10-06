@@ -1,0 +1,235 @@
+{
+  "info": {
+    "_postman_id": "87f9c348-94e5-4f99-8fde-e9cf905c45e0",
+    "name": "KMISS API Quality Suite",
+    "description": "Suite de humo y flujo encadenado de pedido público para el proyecto de control de calidad 2026.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key":"baseUrl","value":"http://localhost:4000"},
+    {"key":"adminEmail","value":""},
+    {"key":"adminPassword","value":""},
+    {"key":"token","value":""},
+    {"key":"productId","value":""},
+    {"key":"orderId","value":""}
+  ],
+  "item": [
+    {
+      "name": "01 Estado del servicio",
+      "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/health","host":["{{baseUrl}}"],"path":["health"]}},
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Estado ok', () => pm.expect(body.estado).to.eql('ok'));",
+        "pm.test('Incluye marca de tiempo', () => pm.expect(body.timestamp).to.be.a('string'));"
+      ]}}]
+    },
+    {
+      "name": "02 Catálogo público y selección de producto",
+      "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/tienda/productos","host":["{{baseUrl}}"],"path":["api","tienda","productos"]}},
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Devuelve una lista', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('Existe producto disponible', () => pm.expect(body.length).to.be.above(0));",
+        "pm.test('Producto contiene precio final', () => pm.expect(body[0]).to.have.property('precio_final'));",
+        "if (body.length) pm.collectionVariables.set('productId', body[0].id);"
+      ]}}]
+    },
+    {
+      "name": "03 Rechazo de pedido incompleto",
+      "request": {
+        "method":"POST","header":[{"key":"Content-Type","value":"application/json"}],
+        "body":{"mode":"raw","raw":"{\n  \"items\": []\n}"},
+        "url":{"raw":"{{baseUrl}}/api/tienda/pedidos","host":["{{baseUrl}}"],"path":["api","tienda","pedidos"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 400', () => pm.response.to.have.status(400));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "pm.test('Explica campos requeridos', () => pm.expect(pm.response.json().error).to.match(/requeridos/i));"
+      ]}}]
+    },
+    {
+      "name": "04 Crear pedido público",
+      "event": [
+        {"listen":"prerequest","script":{"exec":[
+          "const suffix = String(Date.now()).slice(-8);",
+          "pm.variables.set('qaNit', `QA${suffix}`);"
+        ]}},
+        {"listen":"test","script":{"exec":[
+          "pm.test('Código 201', () => pm.response.to.have.status(201));",
+          "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+          "const body = pm.response.json();",
+          "pm.test('Devuelve identificador', () => pm.expect(body.id).to.be.a('number'));",
+          "pm.test('Total positivo', () => pm.expect(Number(body.total)).to.be.above(0));",
+          "pm.test('Incluye expiración de reserva', () => pm.expect(body.reserva_expira_en).to.be.a('string'));",
+          "pm.test('Confirma reserva de 24 horas', () => pm.expect(body.mensaje).to.match(/24 horas/i));",
+          "pm.collectionVariables.set('orderId', body.id);"
+        ]}}
+      ],
+      "request": {
+        "method":"POST","header":[{"key":"Content-Type","value":"application/json"}],
+        "body":{"mode":"raw","raw":"{\n  \"nit\": \"{{qaNit}}\",\n  \"nombre_cliente\": \"Cliente Automatizado QA\",\n  \"telefono\": \"55550099\",\n  \"email\": \"qa.kmiss@example.test\",\n  \"direccion_envio\": \"Dirección de prueba QA\",\n  \"metodo_pago_preferido\": \"efectivo\",\n  \"notas\": \"Pedido creado por Newman\",\n  \"items\": [{\"producto_id\": {{productId}}, \"cantidad\": 1}]\n}"},
+        "url":{"raw":"{{baseUrl}}/api/tienda/pedidos","host":["{{baseUrl}}"],"path":["api","tienda","pedidos"]}
+      }
+    },
+    {
+      "name": "05 Autenticar administrador",
+      "request": {
+        "method":"POST","header":[{"key":"Content-Type","value":"application/json"}],
+        "body":{"mode":"raw","raw":"{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"},
+        "url":{"raw":"{{baseUrl}}/api/auth/login","host":["{{baseUrl}}"],"path":["api","auth","login"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Incluye token', () => pm.expect(body.token).to.be.a('string').and.not.empty);",
+        "pm.test('Perfil administrador', () => pm.expect(body.usuario.rol).to.eql('administrador'));",
+        "pm.collectionVariables.set('token', body.token);"
+      ]}}]
+    },
+    {
+      "name": "06 Consultar pedido creado",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/pedidos/{{orderId}}","host":["{{baseUrl}}"],"path":["api","pedidos","{{orderId}}"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "const body = pm.response.json();",
+        "pm.test('Pedido coincide con el creado', () => pm.expect(String(body.id)).to.eql(String(pm.collectionVariables.get('orderId'))));",
+        "pm.test('Estado inicial nuevo', () => pm.expect(body.estado).to.eql('nuevo'));",
+        "pm.test('Contiene un detalle', () => pm.expect(body.detalles).to.be.an('array').that.is.not.empty);"
+      ]}}]
+    },
+    {
+      "name": "07 Cancelar pedido de prueba",
+      "request": {
+        "method":"PUT","header":[{"key":"Authorization","value":"Bearer {{token}}"},{"key":"Content-Type","value":"application/json"}],
+        "body":{"mode":"raw","raw":"{\n  \"motivo\": \"Limpieza de ejecución automatizada\"\n}"},
+        "url":{"raw":"{{baseUrl}}/api/pedidos/{{orderId}}/cancelar","host":["{{baseUrl}}"],"path":["api","pedidos","{{orderId}}","cancelar"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "pm.test('Confirma cancelación y liberación', () => pm.expect(pm.response.json().mensaje).to.match(/reserva liberada/i));"
+      ]}}]
+    },
+    {
+      "name": "08 Revisar mi sesión",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/auth/me","host":["{{baseUrl}}"],"path":["api","auth","me"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de usuario válido', () => { pm.expect(body).to.have.property('usuario'); pm.expect(body.usuario).to.have.property('id'); pm.expect(body.usuario).to.have.property('email'); pm.expect(body.usuario).to.have.property('rol'); });",
+        "pm.test('Correo de la sesión coincide', () => pm.expect(body.usuario.email).to.eql(pm.variables.get('adminEmail')));"
+      ]}}]
+    },
+    {
+      "name": "09 Buscar paciente de ejemplo",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/pacientes?q=Paciente%20de%20Ejemplo","host":["{{baseUrl}}"],"path":["api","pacientes"],"query":[{"key":"q","value":"Paciente de Ejemplo"}]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de lista válido', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('Encuentra paciente sembrado', () => pm.expect(body.some(p => p.nit === 'CF-DEMO')).to.eql(true));"
+      ]}}]
+    },
+    {
+      "name": "10 Listar servicios administrativos",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/servicios","host":["{{baseUrl}}"],"path":["api","servicios"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de lista válido', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('Incluye servicios activos', () => pm.expect(body.some(s => s.activo === true)).to.eql(true));"
+      ]}}]
+    },
+    {
+      "name": "11 Revisar usuarios del sistema",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/usuarios","host":["{{baseUrl}}"],"path":["api","usuarios"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de lista válido', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('No expone contraseñas', () => body.forEach(u => pm.expect(u).not.to.have.property('password_hash')));",
+        "pm.test('Incluye administrador', () => pm.expect(body.some(u => u.rol === 'administrador')).to.eql(true));"
+      ]}}]
+    },
+    {
+      "name": "12 Resumen rápido de pedidos",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/pedidos/resumen","host":["{{baseUrl}}"],"path":["api","pedidos","resumen"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema del resumen válido', () => { pm.expect(body.nuevos).to.be.a('number'); pm.expect(body.reservados).to.be.a('number'); pm.expect(body.pagos_confirmados).to.be.a('number'); });",
+        "pm.test('Contadores no negativos', () => Object.values(body).forEach(v => pm.expect(v).to.be.at.least(0)));"
+      ]}}]
+    },
+    {
+      "name": "13 Listar pedidos cancelados",
+      "request": {
+        "method":"GET","header":[{"key":"Authorization","value":"Bearer {{token}}"}],
+        "url":{"raw":"{{baseUrl}}/api/pedidos?estado=cancelado","host":["{{baseUrl}}"],"path":["api","pedidos"],"query":[{"key":"estado","value":"cancelado"}]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de lista válido', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('Pedido de prueba quedó cancelado', () => pm.expect(body.some(p => String(p.id) === String(pm.collectionVariables.get('orderId')) && p.estado === 'cancelado')).to.eql(true));"
+      ]}}]
+    },
+    {
+      "name": "14 Consultar servicios públicos",
+      "request": {
+        "method":"GET","header":[],
+        "url":{"raw":"{{baseUrl}}/api/tienda/servicios","host":["{{baseUrl}}"],"path":["api","tienda","servicios"]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 200', () => pm.response.to.have.status(200));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de lista válido', () => pm.expect(body).to.be.an('array'));",
+        "pm.test('Incluye precio y duración', () => { pm.expect(body[0]).to.have.property('precio'); pm.expect(body[0]).to.have.property('duracion_minutos'); });"
+      ]}}]
+    },
+    {
+      "name": "15 Rechazar disponibilidad incompleta",
+      "request": {
+        "method":"GET","header":[],
+        "url":{"raw":"{{baseUrl}}/api/tienda/disponibilidad?fecha=2026-10-30","host":["{{baseUrl}}"],"path":["api","tienda","disponibilidad"],"query":[{"key":"fecha","value":"2026-10-30"}]}
+      },
+      "event": [{"listen":"test","script":{"exec":[
+        "pm.test('Código 400', () => pm.response.to.have.status(400));",
+        "pm.test('Respuesta JSON', () => pm.response.to.be.json);",
+        "const body = pm.response.json();",
+        "pm.test('Esquema de error válido', () => pm.expect(body).to.have.property('error').that.is.a('string'));",
+        "pm.test('Explica los datos requeridos', () => pm.expect(body.error).to.match(/requeridos/i));"
+      ]}}]
+    }
+  ]
+}
