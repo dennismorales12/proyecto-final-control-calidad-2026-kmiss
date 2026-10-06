@@ -333,7 +333,8 @@ UPDATE pedidos_publicos SET estado = CASE estado
     WHEN 'aprobado' THEN 'pagado'
     WHEN 'rechazado' THEN 'cancelado'
     ELSE estado
-END;
+END
+WHERE estado IN ('pendiente', 'aprobado', 'rechazado');
 UPDATE pedidos_publicos
 SET reserva_expira_en = COALESCE(reserva_expira_en, NOW() + INTERVAL '24 hours')
 WHERE estado IN ('nuevo', 'contactado', 'esperando_pago');

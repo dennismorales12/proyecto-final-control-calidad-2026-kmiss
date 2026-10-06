@@ -23,6 +23,8 @@ variables:
     value: '20.x'
   - name: archivoAplicacion
     value: '$(Build.ArtifactStagingDirectory)/kmiss-$(Build.BuildId).zip'
+  - name: revisionLineaBase
+    value: '55c90b29d479102c6de16448dd2bd6d77845f148'
 
 stages:
   - stage: Compilacion
@@ -86,6 +88,7 @@ stages:
         steps:
           - checkout: self
             displayName: Descargar código fuente
+            fetchDepth: 0
 
           - task: UseNode@1
             displayName: Preparar Node.js 20
@@ -98,23 +101,55 @@ stages:
           - script: npm ci --prefix frontend
             displayName: Instalar dependencias de pruebas del frontend
 
-          - script: >-
-              npm test --prefix backend --
-              --runInBand
-              --coverage
-              --collectCoverageFrom=src/**/*.js
-              --coverageReporters=text
-              --coverageReporters=lcov
-              --coverageReporters=cobertura
-            displayName: Ejecutar pruebas y calcular cobertura
+          - script: |
+              git worktree add --detach "$(Agent.TempDirectory)/kmiss-linea-base" "$(revisionLineaBase)"
+              npm ci --prefix "$(Agent.TempDirectory)/kmiss-linea-base/backend"
+              npm test --prefix "$(Agent.TempDirectory)/kmiss-linea-base/backend" -- --runInBand --silent --coverage --collectCoverageFrom=src/**/*.js --coverageReporters=json-summary --coverageReporters=lcov
+            displayName: Medir línea base de los módulos críticos
 
-          - script: npm test --prefix frontend --if-present
+          - script: npm run test:ci --prefix backend
+            displayName: Ejecutar pruebas y calcular cobertura
+            env:
+              JEST_JUNIT_OUTPUT_DIR: $(Build.SourcesDirectory)/backend/test-results
+              JEST_JUNIT_OUTPUT_NAME: backend.xml
+
+          - script: npm run test:ci --prefix frontend
             displayName: Ejecutar pruebas unitarias del frontend
+
+          - script: >-
+              node scripts/comparar-cobertura.cjs
+              "$(Agent.TempDirectory)/kmiss-linea-base/backend/coverage/coverage-summary.json"
+              backend/coverage/coverage-summary.json
+              test-results/cobertura-critica
+            displayName: Comparar incremento de cobertura en módulos críticos
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de Jest
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: backend/test-results/backend.xml
+              testRunTitle: Pruebas backend KMISS
+              failTaskOnFailedTests: true
+              failTaskOnMissingResultsFile: true
+
+          - task: PublishTestResults@2
+            displayName: Publicar resultados de Vitest
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: frontend/test-results/frontend.xml
+              testRunTitle: Pruebas frontend KMISS
+              failTaskOnFailedTests: true
+              failTaskOnMissingResultsFile: true
 
           - task: PublishCodeCoverageResults@2
             displayName: Publicar cobertura
+            condition: always()
             inputs:
-              summaryFileLocation: $(Build.SourcesDirectory)/backend/coverage/cobertura-coverage.xml
+              summaryFileLocation: |
+                $(Build.SourcesDirectory)/backend/coverage/cobertura-coverage.xml
+                $(Build.SourcesDirectory)/frontend/coverage/cobertura-coverage.xml
 
           - task: PublishPipelineArtifact@1
             displayName: Conservar evidencia de cobertura
@@ -122,6 +157,27 @@ stages:
             inputs:
               targetPath: $(Build.SourcesDirectory)/backend/coverage
               artifact: cobertura-backend
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar cobertura del frontend
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/frontend/coverage
+              artifact: cobertura-frontend
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar comparativa de módulos críticos
+            condition: always()
+            inputs:
+              targetPath: $(Build.SourcesDirectory)/test-results/cobertura-critica
+              artifact: cobertura-modulos-criticos
+
+          - task: PublishPipelineArtifact@1
+            displayName: Conservar medición de línea base
+            condition: always()
+            inputs:
+              targetPath: $(Agent.TempDirectory)/kmiss-linea-base/backend/coverage
+              artifact: cobertura-linea-base
 
   - stage: AnalisisEstatico
     displayName: Analizar calidad del código
@@ -140,7 +196,13 @@ stages:
               artifactName: cobertura-backend
               targetPath: $(Build.SourcesDirectory)/backend/coverage
 
-          - task: SonarCloudPrepare@3.4.3
+          - task: DownloadPipelineArtifact@2
+            displayName: Recuperar cobertura del frontend
+            inputs:
+              artifactName: cobertura-frontend
+              targetPath: $(Build.SourcesDirectory)/frontend/coverage
+
+          - task: SonarCloudPrepare@4
             displayName: Preparar análisis de SonarCloud
             inputs:
               SonarCloud: SonarCloud KMISS
@@ -148,10 +210,10 @@ stages:
               scannerMode: cli
               configMode: file
 
-          - task: SonarCloudAnalyze@3.4.3
+          - task: SonarCloudAnalyze@4
             displayName: Ejecutar análisis estático
 
-          - task: SonarCloudPublish@3.4.3
+          - task: SonarCloudPublish@4
             displayName: Verificar puerta de calidad
             inputs:
               pollingTimeoutSec: '300'

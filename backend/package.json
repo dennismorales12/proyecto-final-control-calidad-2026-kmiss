@@ -10,7 +10,7 @@
     "init-db": "node init-db.js",
     "seed": "node seed-data.js",
     "test": "jest",
-    "test:ci": "jest --runInBand --silent --coverage --collectCoverageFrom=src/**/*.js --coverageReporters=text --coverageReporters=lcov --coverageReporters=json-summary"
+    "test:ci": "jest --runInBand --silent --coverage --collectCoverageFrom=src/**/*.js --coverageReporters=text --coverageReporters=lcov --coverageReporters=json-summary --coverageReporters=cobertura --reporters=default --reporters=jest-junit"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
     "nodemon": "^3.1.4",
     "supertest": "^7.0.0"
   }
