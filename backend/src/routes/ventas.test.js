@@ -75,3 +75,34 @@ test('no devuelve stock por segunda vez al anular', async () => {
   expect(cliente.query.mock.calls.some(([sql]) => sql.startsWith('UPDATE productos'))).toBe(false);
   expect(cliente.query).toHaveBeenCalledWith('ROLLBACK');
 });
+
+test('no vende productos inactivos y libera la conexión', async () => {
+  const cliente = transaccion({ activo: false });
+  pool.connect.mockResolvedValue(cliente);
+  const r = await request(app).post('/ventas').send({ items: [{ producto_id: 4, cantidad: 1 }] });
+  expect(r.status).toBe(400);
+  expect(r.body.error).toContain('inactivo');
+  expect(cliente.query).toHaveBeenCalledWith('ROLLBACK');
+  expect(cliente.release).toHaveBeenCalledTimes(1);
+});
+test('no vende un producto inexistente', async () => {
+  const cliente = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
+  pool.connect.mockResolvedValue(cliente);
+  const r = await request(app).post('/ventas').send({ items: [{ producto_id: 999, cantidad: 1 }] });
+  expect(r.status).toBe(400);
+  expect(r.body.error).toContain('Producto no encontrado');
+});
+test('rechaza una línea que identifica producto y servicio a la vez', async () => {
+  const cliente = transaccion();
+  pool.connect.mockResolvedValue(cliente);
+  const r = await request(app).post('/ventas').send({ items: [{ producto_id: 4, servicio_id: 3, cantidad: 1 }] });
+  expect(r.status).toBe(400);
+  expect(r.body.error).toContain('un producto o un servicio');
+});
+test('no vende un servicio inexistente', async () => {
+  const cliente = { query: jest.fn().mockResolvedValue({ rows: [] }), release: jest.fn() };
+  pool.connect.mockResolvedValue(cliente);
+  const r = await request(app).post('/ventas').send({ items: [{ servicio_id: 999, cantidad: 1 }] });
+  expect(r.status).toBe(400);
+  expect(r.body.error).toContain('Servicio no disponible');
+});

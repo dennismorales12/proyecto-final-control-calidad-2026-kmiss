@@ -6,6 +6,41 @@ const { enteroPositivo, validarDescuentoMonto } = require('../domain/validation'
 const router = express.Router();
 router.use(autenticar);
 
+async function validarProductoVenta(client, item, cantidad) {
+  const resultado = await client.query('SELECT stock_actual, nombre, precio, activo FROM productos WHERE id = $1 FOR UPDATE', [item.producto_id]);
+  const producto = resultado.rows[0];
+  if (!producto) throw new Error(`Producto no encontrado (id ${item.producto_id})`);
+  if (!producto.activo) throw new Error(`Producto inactivo (id ${item.producto_id})`);
+  if (producto.stock_actual < cantidad) {
+    throw new Error(`Stock insuficiente de "${producto.nombre}" (disponible: ${producto.stock_actual})`);
+  }
+  return { producto_id: item.producto_id, servicio_id: null, descripcion: producto.nombre, cantidad, precio_unitario: Number(producto.precio) };
+}
+
+async function validarLineaVenta(client, item) {
+  const cantidad = enteroPositivo(item.cantidad);
+  if (Boolean(item.producto_id) === Boolean(item.servicio_id)) {
+    throw new Error('Cada línea debe identificar un producto o un servicio');
+  }
+  if (item.producto_id) return validarProductoVenta(client, item, cantidad);
+  const resultado = await client.query('SELECT nombre, precio, activo FROM servicios WHERE id=$1', [item.servicio_id]);
+  const servicio = resultado.rows[0];
+  if (!servicio?.activo) throw new Error(`Servicio no disponible (id ${item.servicio_id})`);
+  return { producto_id: null, servicio_id: item.servicio_id, descripcion: servicio.nombre, cantidad, precio_unitario: Number(servicio.precio) };
+}
+
+async function guardarDetalleVenta(client, ventaId, item) {
+  await client.query(
+    `INSERT INTO venta_detalles (venta_id, producto_id, servicio_id, descripcion, cantidad, precio_unitario, subtotal)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+    [ventaId, item.producto_id || null, item.servicio_id || null, item.descripcion,
+      item.cantidad, item.precio_unitario, item.cantidad * item.precio_unitario]
+  );
+  if (item.producto_id) {
+    await client.query('UPDATE productos SET stock_actual = stock_actual - $1 WHERE id = $2', [item.cantidad, item.producto_id]);
+  }
+}
+
 // GET /api/ventas/dashboard?mes=YYYY-MM — indicadores comerciales del mes
 router.get('/dashboard', permitirRoles('administrador', 'recepcion'), async (req, res) => {
   const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '')
@@ -131,25 +166,7 @@ router.post('/', permitirRoles('administrador', 'recepcion'), async (req, res) =
 
     const itemsValidados = [];
     for (const item of items) {
-      const cantidad = enteroPositivo(item.cantidad);
-      if (Boolean(item.producto_id) === Boolean(item.servicio_id)) {
-        throw new Error('Cada línea debe identificar un producto o un servicio');
-      }
-      if (item.producto_id) {
-        const prod = await client.query('SELECT stock_actual, nombre, precio, activo FROM productos WHERE id = $1 FOR UPDATE', [item.producto_id]);
-        if (prod.rows.length === 0) {
-          throw new Error(`Producto no encontrado (id ${item.producto_id})`);
-        }
-        if (!prod.rows[0].activo) throw new Error(`Producto inactivo (id ${item.producto_id})`);
-        if (prod.rows[0].stock_actual < cantidad) {
-          throw new Error(`Stock insuficiente de "${prod.rows[0].nombre}" (disponible: ${prod.rows[0].stock_actual})`);
-        }
-        itemsValidados.push({ producto_id: item.producto_id, servicio_id: null, descripcion: prod.rows[0].nombre, cantidad, precio_unitario: Number(prod.rows[0].precio) });
-      } else {
-        const servicio = await client.query('SELECT nombre, precio, activo FROM servicios WHERE id=$1', [item.servicio_id]);
-        if (!servicio.rows[0] || !servicio.rows[0].activo) throw new Error(`Servicio no disponible (id ${item.servicio_id})`);
-        itemsValidados.push({ producto_id: null, servicio_id: item.servicio_id, descripcion: servicio.rows[0].nombre, cantidad, precio_unitario: Number(servicio.rows[0].precio) });
-      }
+      itemsValidados.push(await validarLineaVenta(client, item));
     }
 
     const subtotal = itemsValidados.reduce((acc, i) => acc + (i.cantidad * i.precio_unitario), 0);
@@ -164,20 +181,7 @@ router.post('/', permitirRoles('administrador', 'recepcion'), async (req, res) =
     const ventaId = ventaResultado.rows[0].id;
 
     for (const item of itemsValidados) {
-      const lineaSubtotal = item.cantidad * item.precio_unitario;
-      await client.query(
-        `INSERT INTO venta_detalles (venta_id, producto_id, servicio_id, descripcion, cantidad, precio_unitario, subtotal)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [ventaId, item.producto_id || null, item.servicio_id || null, item.descripcion,
-          item.cantidad, item.precio_unitario, lineaSubtotal]
-      );
-
-      if (item.producto_id) {
-        await client.query(
-          'UPDATE productos SET stock_actual = stock_actual - $1 WHERE id = $2',
-          [item.cantidad, item.producto_id]
-        );
-      }
+      await guardarDetalleVenta(client, ventaId, item);
     }
 
     await client.query('COMMIT');

@@ -97,3 +97,48 @@ test('rechaza transición desde una cita atendida', async () => {
   expect(respuesta.status).toBe(400);
   expect(respuesta.body.error).toMatch(/No se permite/);
 });
+
+test('crea un producto válido normalizando nombre y valores numéricos', async () => {
+  pool.query.mockResolvedValue({ rows: [{ id: 4, nombre: 'Gel' }] });
+  const r = await request(app).post('/productos').send({ nombre: ' Gel ', precio: '40', costo: '10', stock_actual: '5', stock_minimo: 0 });
+  expect(r.status).toBe(201);
+  expect(pool.query.mock.calls[0][1]).toEqual(['Gel', null, null, 40, 10, 5, 0, 'unidad']);
+});
+test('no permite reducir existencias por debajo de las unidades reservadas', async () => {
+  pool.query.mockResolvedValue({ rows: [{ stock_reservado: 3 }] });
+  const r = await request(app).put('/productos/4').send({ nombre: 'Gel', precio: 40, stock_actual: 2 });
+  expect(r.status).toBe(400);
+  expect(r.body.error).toContain('3 unidades reservadas');
+  expect(pool.query).toHaveBeenCalledTimes(1);
+});
+test('actualiza un producto manteniendo el stock reservado', async () => {
+  pool.query.mockResolvedValueOnce({ rows: [{ stock_reservado: 2 }] }).mockResolvedValueOnce({ rows: [{ id: 4, stock_actual: 5 }] });
+  const r = await request(app).put('/productos/4').send({ nombre: 'Gel', precio: 40, stock_actual: 5, activo: false });
+  expect(r.status).toBe(200);
+  expect(pool.query.mock.calls[1][1]).toEqual(['Gel', null, null, 40, 0, 5, 0, 'unidad', false, '4']);
+});
+test('devuelve 404 al editar un producto que no existe', async () => {
+  pool.query.mockResolvedValue({ rows: [] });
+  expect((await request(app).put('/productos/999').send({ nombre: 'Gel' })).status).toBe(404);
+  expect(pool.query).toHaveBeenCalledTimes(1);
+});
+test('no consulta la base al editar producto con precio negativo', async () => {
+  expect((await request(app).put('/productos/4').send({ nombre: 'Gel', precio: -1 })).status).toBe(400);
+  expect(pool.query).not.toHaveBeenCalled();
+});
+test('crea servicio con duración y precio válidos', async () => {
+  pool.query.mockResolvedValue({ rows: [{ id: 3, nombre: 'Consulta' }] });
+  const r = await request(app).post('/servicios').send({ nombre: ' Consulta ', duracion_minutos: 45, precio: 100 });
+  expect(r.status).toBe(201);
+  expect(pool.query.mock.calls[0][1]).toEqual(['Consulta', null, 45, 100, null]);
+});
+test('actualiza servicio con precio cero y estado inactivo', async () => {
+  pool.query.mockResolvedValue({ rows: [{ id: 3 }] });
+  const r = await request(app).put('/servicios/3').send({ nombre: 'Consulta', duracion_minutos: 30, precio: 0, activo: false });
+  expect(r.status).toBe(200);
+  expect(pool.query.mock.calls[0][1]).toEqual(['Consulta', null, 30, 0, null, false, '3']);
+});
+test('rechaza edición de servicio con duración cero sin consultar la base', async () => {
+  expect((await request(app).put('/servicios/3').send({ nombre: 'Consulta', duracion_minutos: 0 })).status).toBe(400);
+  expect(pool.query).not.toHaveBeenCalled();
+});
