@@ -3,6 +3,7 @@ const XLSX = require('xlsx');
 const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { obtenerCelda: obtener } = require('../importacionExcel');
 const { validarDisponibilidad } = require('../agenda');
 const { validarTransicionCita } = require('../domain/stateMachines');
 
@@ -227,6 +228,67 @@ router.delete('/:id', permitirRoles('administrador'), async (req, res) => {
   }
 });
 
+
+async function resolverReferenciasImportacion({ pacienteRef, servicioRef, sedeRef, medicoRef }) {
+      const paciente = await pool.query(
+        `SELECT id FROM pacientes WHERE UPPER(nit) = UPPER($1) OR LOWER(nombre_completo) = LOWER($1) LIMIT 1`,
+        [pacienteRef]
+      );
+      if (paciente.rows.length === 0) {
+        throw new Error(`no se encontró el paciente "${pacienteRef}" (impórtalo primero)`);
+      }
+
+      const servicio = await pool.query('SELECT id FROM servicios WHERE LOWER(nombre) = LOWER($1) LIMIT 1', [servicioRef]);
+      if (servicio.rows.length === 0) {
+        throw new Error(`no se encontró el servicio "${servicioRef}"`);
+      }
+
+      const sede = sedeRef
+        ? await pool.query('SELECT id FROM sedes WHERE LOWER(nombre) = LOWER($1) LIMIT 1', [sedeRef])
+        : await pool.query('SELECT id FROM sedes WHERE activo=TRUE ORDER BY id LIMIT 1');
+      if (sede.rows.length === 0) {
+        throw new Error(`no se encontró la sede${sedeRef ? ` "${sedeRef}"` : ' activa'}`);
+      }
+
+      let medico_id = null;
+      if (medicoRef) {
+        const medico = await pool.query(
+          `SELECT id FROM usuarios WHERE LOWER(nombre) = LOWER($1) AND rol = 'medico' LIMIT 1`,
+          [medicoRef]
+        );
+        if (medico.rows.length > 0) medico_id = medico.rows[0].id;
+      }
+
+
+  return { paciente, servicio, sede, medico_id };
+}
+
+async function guardarCitaImportada({ paciente, servicio, sede, medico_id }, { fecha_hora, motivo_consulta, estado }, usuarioId) {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        if (medico_id) {
+          await validarDisponibilidad(client, {
+            medicoId: medico_id,
+            sedeId: sede.rows[0].id,
+            servicioId: servicio.rows[0].id,
+            fechaHora: fecha_hora,
+          });
+        }
+        await client.query(
+          `INSERT INTO citas (paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, estado, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [paciente.rows[0].id, servicio.rows[0].id, medico_id, sede.rows[0].id, fecha_hora, motivo_consulta, estado, usuarioId]
+        );
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+}
+
 // POST /api/citas/importar — carga masiva desde Excel (solo administrador)
 // Columnas esperadas: paciente (nombre completo o documento), servicio (nombre), sede, fecha_hora,
 // medico (nombre, opcional), motivo_consulta (opcional), estado (opcional)
@@ -249,13 +311,6 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
     return res.status(400).json({ error: 'El archivo no contiene filas de datos' });
   }
 
-  const obtener = (fila, ...claves) => {
-    for (const clave of claves) {
-      const encontrada = Object.keys(fila).find((k) => k.toLowerCase().trim() === clave);
-      if (encontrada && fila[encontrada] !== null && fila[encontrada] !== '') return fila[encontrada];
-    }
-    return null;
-  };
 
   const estadosValidos = ['solicitada', 'programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio'];
   let creadas = 0;
@@ -282,61 +337,8 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
     const fecha_hora = fechaHoraRaw instanceof Date ? fechaHoraRaw.toISOString() : fechaHoraRaw;
 
     try {
-      const paciente = await pool.query(
-        `SELECT id FROM pacientes WHERE UPPER(nit) = UPPER($1) OR LOWER(nombre_completo) = LOWER($1) LIMIT 1`,
-        [pacienteRef]
-      );
-      if (paciente.rows.length === 0) {
-        errores.push(`Fila ${numeroFila}: no se encontró el paciente "${pacienteRef}" (impórtalo primero)`);
-        continue;
-      }
-
-      const servicio = await pool.query('SELECT id FROM servicios WHERE LOWER(nombre) = LOWER($1) LIMIT 1', [servicioRef]);
-      if (servicio.rows.length === 0) {
-        errores.push(`Fila ${numeroFila}: no se encontró el servicio "${servicioRef}"`);
-        continue;
-      }
-
-      const sede = sedeRef
-        ? await pool.query('SELECT id FROM sedes WHERE LOWER(nombre) = LOWER($1) LIMIT 1', [sedeRef])
-        : await pool.query('SELECT id FROM sedes WHERE activo=TRUE ORDER BY id LIMIT 1');
-      if (sede.rows.length === 0) {
-        errores.push(`Fila ${numeroFila}: no se encontró la sede${sedeRef ? ` "${sedeRef}"` : ' activa'}`);
-        continue;
-      }
-
-      let medico_id = null;
-      if (medicoRef) {
-        const medico = await pool.query(
-          `SELECT id FROM usuarios WHERE LOWER(nombre) = LOWER($1) AND rol = 'medico' LIMIT 1`,
-          [medicoRef]
-        );
-        if (medico.rows.length > 0) medico_id = medico.rows[0].id;
-      }
-
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        if (medico_id) {
-          await validarDisponibilidad(client, {
-            medicoId: medico_id,
-            sedeId: sede.rows[0].id,
-            servicioId: servicio.rows[0].id,
-            fechaHora: fecha_hora,
-          });
-        }
-        await client.query(
-          `INSERT INTO citas (paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, estado, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-          [paciente.rows[0].id, servicio.rows[0].id, medico_id, sede.rows[0].id, fecha_hora, motivo_consulta, estado, req.usuario.id]
-        );
-        await client.query('COMMIT');
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      } finally {
-        client.release();
-      }
+      const referencias = await resolverReferenciasImportacion({ pacienteRef, servicioRef, sedeRef, medicoRef });
+      await guardarCitaImportada(referencias, { fecha_hora, motivo_consulta, estado }, req.usuario.id);
       creadas++;
     } catch (error) {
       errores.push(`Fila ${numeroFila}: ${error.message}`);

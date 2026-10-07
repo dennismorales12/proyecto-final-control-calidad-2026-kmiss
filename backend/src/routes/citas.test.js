@@ -97,3 +97,24 @@ test('una fila incompleta no consulta pacientes ni abre transacciones', async ()
   expect(pool.query).not.toHaveBeenCalled();
   expect(pool.connect).not.toHaveBeenCalled();
 });
+
+test.each([
+  [0,'paciente'],[1,'servicio'],[2,'sede'],
+])('una referencia ausente en la consulta %i informa %s sin abrir transacción',async (consulta,nombre)=>{
+  XLSX.utils.sheet_to_json.mockReturnValue([{paciente:'Ana',servicio:'Consulta',sede:'Central',fecha:'2035-10-20T10:00:00'}]);
+  let llamada=0;
+  pool.query.mockImplementation(async()=>({rows:llamada++===consulta ? [] : [{id:2}]}));
+  const r=await request(app).post('/citas/importar');
+  expect(r.body.creadas).toBe(0);
+  expect(r.body.errores[0]).toContain(`Fila 2: no se encontró ${nombre==='sede'?'la':'el'} ${nombre}`);
+  expect(pool.connect).not.toHaveBeenCalled();
+});
+test('importar sin médico mantiene null y usa la sede activa',async()=>{
+  XLSX.utils.sheet_to_json.mockReturnValue([{paciente:'Ana',servicio:'Consulta',fecha:'2035-10-20T10:00:00',estado:'desconocido'}]);
+  pool.query.mockResolvedValue({rows:[{id:2}]});
+  expect((await request(app).post('/citas/importar')).body.creadas).toBe(1);
+  expect(validarDisponibilidad).not.toHaveBeenCalled();
+  const insert=cliente.query.mock.calls.find(([sql])=>sql.includes('INSERT INTO citas'));
+  expect(insert[1][2]).toBeNull();
+  expect(insert[1][6]).toBe('programada');
+});

@@ -135,42 +135,12 @@ export default function Tienda() {
     }
   }
 
-  return (
-    <div className="tienda-pagina">
-      <header className="tienda-header">
-        <div className="tienda-marca">
-          <img className="tienda-logo" src={logoDorado} alt={`${APP_CONFIG.nombreEmpresa} - ${APP_CONFIG.eslogan}`} />
-        </div>
-        <div className="tienda-tabs" role="tablist">
-          <button className={vista === 'productos' ? 'activo' : ''} onClick={() => setVista('productos')}><Package size={16} /> Productos</button>
-          <button className={vista === 'servicios' ? 'activo' : ''} onClick={() => setVista('servicios')}><Stethoscope size={16} /> Servicios y citas</button>
-          <button className={vista === 'sedes' ? 'activo' : ''} onClick={() => setVista('sedes')}><MapPin size={16} /> Encuéntranos</button>
-          <button className={vista === 'noticias' ? 'activo' : ''} onClick={() => setVista('noticias')}><Newspaper size={16} /> Noticias</button>
-        </div>
-        <div className="tienda-header-acciones">
-          <a className="tienda-social-boton" href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer" title={`Instagram ${APP_CONFIG.instagramUsuario}`}><Instagram size={18} /></a>
-          <button className="tienda-carrito-boton" onClick={() => setCarritoAbierto(true)} title="Ver carrito"><ShoppingCart size={19} strokeWidth={1.75} />{cantidadTotal > 0 && <span className="tienda-carrito-contador">{cantidadTotal}</span>}</button>
-        </div>
-      </header>
+    function mostrarCargaCatalogo() {
+    return (<p className="texto-vacio">Cargando catálogo…</p>);
+  }
 
-      <section className="tienda-presentacion">
-        <div className="tienda-presentacion-interior">
-          <p className="tienda-eyebrow">Dra. Karen Miss Retana</p>
-          <h1>Medicina estética avanzada</h1>
-          <p className="tienda-presentacion-texto">Tratamientos personalizados para acompañar una versión más segura y auténtica de ti.</p>
-          <p className="tienda-tratamientos">Sculptra <span>·</span> Botox <span>·</span> Radiesse <span>·</span> K-Skin</p>
-          <div className="tienda-presentacion-acciones">
-            <button className="boton-primario" onClick={() => setVista('servicios')}><CalendarDays size={17} /> Reservar cita</button>
-            <a href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={17} /> Ver Instagram <ArrowRight size={15} /></a>
-          </div>
-        </div>
-      </section>
-
-      <main className="tienda-contenido">
-        {cargando ? (
-          <p className="texto-vacio">Cargando catálogo…</p>
-        ) : vista === 'servicios' ? (
-          <section className="tienda-servicios-publicos">
+  function mostrarServicios() {
+    return (<section className="tienda-servicios-publicos">
             <div className="tienda-seccion-titulo"><div><h2>Servicios de K-MISS</h2><p>Selecciona un tratamiento para consultar horarios y solicitar tu cita.</p></div></div>
             {servicios.length === 0 ? <p className="texto-vacio">No hay servicios disponibles por el momento.</p> : <div className="tienda-grid">
               {servicios.map((servicio) => <article key={servicio.id} className="tienda-tarjeta servicio-publico" tabIndex="0">
@@ -180,27 +150,35 @@ export default function Tienda() {
                 <div className="servicio-hover-detalle" role="tooltip"><strong>{servicio.nombre}</strong><p>{servicio.descripcion || 'Este servicio no tiene una descripción registrada todavía.'}</p><span>{servicio.especialidad || 'Servicio de K-MISS'} · {servicio.duracion_minutos} min</span></div>
               </article>)}
             </div>}
-          </section>
-        ) : vista === 'sedes' ? (
-          <section className="tienda-sedes-publicas">
+          </section>);
+  }
+
+  function mostrarSedes() {
+    return (<section className="tienda-sedes-publicas">
             <div className="tienda-seccion-titulo"><div><h2>Encuéntranos</h2><p>Conoce nuestros establecimientos y elige el más conveniente para tu cita.</p></div></div>
             {sedes.length === 0 ? <p className="texto-vacio">Próximamente publicaremos nuestras ubicaciones.</p> : <div className="sedes-publicas-grid">{sedes.map((sede) => <article className="sede-publica" key={sede.id}>
               <div className="sede-publica-icono"><MapPin size={22} /></div><div><h3>{sede.nombre}</h3><p>{sede.direccion}</p>{sede.telefono && <a href={`tel:${sede.telefono}`}><Phone size={15} /> {sede.telefono}</a>}</div>
               <a className="boton-secundario" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sede.direccion)}`} target="_blank" rel="noreferrer"><MapPin size={15} /> Ver en mapa</a>
             </article>)}</div>}
-          </section>
-        ) : vista === 'noticias' ? (
-          <section className="tienda-noticias-publicas">
+          </section>);
+  }
+
+  function mostrarNoticias() {
+    return (<section className="tienda-noticias-publicas">
             <div className="tienda-seccion-titulo"><div><h2>Noticias y actividades</h2><p>Conferencias, eventos y novedades de K-MISS Medicina Estética.</p></div></div>
             {noticias.length === 0 ? <p className="texto-vacio">No hay noticias publicadas por el momento.</p> : <div className="noticias-publicas-grid">{noticias.map((noticia) => <article className="noticia-publica" key={noticia.id}>
               <div className="noticia-publica-imagen">{noticia.imagen_url ? <img src={urlArchivo(noticia.imagen_url)} alt={noticia.titulo} /> : <Newspaper size={30} />}</div>
               <div className="noticia-publica-contenido">{noticia.fecha_evento && <time dateTime={String(noticia.fecha_evento).slice(0,10)}>{new Date(`${String(noticia.fecha_evento).slice(0,10)}T12:00:00`).toLocaleDateString('es-GT',{day:'numeric',month:'long',year:'numeric'})}</time>}<h3>{noticia.titulo}</h3>{noticia.resumen && <p className="noticia-resumen">{noticia.resumen}</p>}{noticia.contenido && <p>{noticia.contenido}</p>}{noticia.enlace_url && <a href={noticia.enlace_url} target="_blank" rel="noreferrer">Más información <ExternalLink size={14} /></a>}</div>
             </article>)}</div>}
-          </section>
-        ) : productos.length === 0 ? (
-          <p className="texto-vacio">No hay productos disponibles por el momento.</p>
-        ) : (
-            <section className="tienda-seccion">
+          </section>);
+  }
+
+  function mostrarCatalogoVacio() {
+    return (<p className="texto-vacio">No hay productos disponibles por el momento.</p>);
+  }
+
+  function mostrarProductos() {
+    return (<section className="tienda-seccion">
               <div className="tienda-seccion-titulo"><div><h2>Productos K-Skin</h2><p>Explora el catálogo por categoría y encuentra lo que necesitas.</p></div></div>
               <div className="productos-filtros" aria-label="Filtrar productos por categoría">
                 <span><ListFilter size={16} /> Categorías</span>
@@ -246,25 +224,31 @@ export default function Tienda() {
                   </div>
                 </section>)}
               </div>
-            </section>
-        )}
-      </main>
+            </section>);
+  }
 
-      {servicioDetalle && <div className="modal-fondo" onClick={() => setServicioDetalle(null)}><div className="modal servicio-detalle-modal" onClick={(e) => e.stopPropagation()}>
+  function mostrarCatalogo() {
+    if (cargando) return mostrarCargaCatalogo();
+    if (vista === 'servicios') return mostrarServicios();
+    if (vista === 'sedes') return mostrarSedes();
+    if (vista === 'noticias') return mostrarNoticias();
+    if (productos.length === 0) return mostrarCatalogoVacio();
+    return mostrarProductos();
+  }
+
+  function mostrarServicioDetalle() {
+    return (servicioDetalle && <div className="modal-fondo" onClick={() => setServicioDetalle(null)}><div className="modal servicio-detalle-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-encabezado"><h2>{servicioDetalle.nombre}</h2><button className="modal-cerrar" onClick={() => setServicioDetalle(null)}><X size={18} /></button></div>
         <div className="servicio-detalle-imagen"><ImagenCatalogo ruta={servicioDetalle.imagen_url} nombre={servicioDetalle.nombre} Icono={Stethoscope} /></div>
         {servicioDetalle.especialidad && <span className="etiqueta">{servicioDetalle.especialidad}</span>}
         <p className="servicio-detalle-descripcion">{servicioDetalle.descripcion || 'Próximamente agregaremos más información sobre este servicio.'}</p>
         <div className="servicio-detalle-datos"><div><span>Duración</span><strong>{servicioDetalle.duracion_minutos} minutos</strong></div><div><span>Precio</span><strong>Q{Number(servicioDetalle.precio).toFixed(2)}</strong></div></div>
         <div className="modal-acciones"><button className="boton-secundario" onClick={() => setServicioDetalle(null)}>Cerrar</button><button className="boton-primario" onClick={() => { setServicioDetalle(null); reservarServicio(servicioDetalle); }}><CalendarDays size={16} /> Reservar cita</button></div>
-      </div></div>}
+      </div></div>);
+  }
 
-      <footer className="tienda-footer">
-        <img className="tienda-footer-logo" src={logoDorado} alt="K-MISS Medicina Estética Avanzada" />
-        <nav><a href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={17} /> {APP_CONFIG.instagramUsuario}</a><a href={`https://wa.me/${APP_CONFIG.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={17} /> WhatsApp 5578-4833</a></nav>
-      </footer>
-
-      {citaAbierta && <div className="modal-fondo" onClick={() => setCitaAbierta(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+  function mostrarCitaAbierta() {
+    return (citaAbierta && <div className="modal-fondo" onClick={() => setCitaAbierta(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-encabezado"><h2>Solicitar cita</h2><button className="modal-cerrar" onClick={() => setCitaAbierta(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={solicitarCita}>
           <label className="campo-ancho">Establecimiento *<select required value={datosCita.sede_id} onChange={(e) => setDatosCita({ ...datosCita, sede_id: Number(e.target.value) })}><option value="">Selecciona una sede</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre} · {s.direccion}</option>)}</select></label>
@@ -282,11 +266,15 @@ export default function Tienda() {
           {error && <p className="login-error campo-ancho">{error}</p>}
           <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setCitaAbierta(false)}>Cancelar</button><button className="boton-primario" disabled={enviando || !datosCita.hora}>{enviando ? 'Enviando…' : 'Solicitar cita'}</button></div>
         </form>
-      </div></div>}
+      </div></div>);
+  }
 
-      {citaConfirmacion && <div className="modal-fondo" onClick={() => setCitaConfirmacion(null)}><div className="modal confirmacion-cita" onClick={(e) => e.stopPropagation()}><CheckCircle2 size={42} /><h2>Solicitud recibida</h2><p>Tu solicitud #{citaConfirmacion.id} fue registrada. Recepción verificará los datos y se comunicará contigo para confirmar la cita.</p><button className="boton-primario" onClick={() => setCitaConfirmacion(null)}>Entendido</button></div></div>}
+  function mostrarCitaConfirmacion() {
+    return (citaConfirmacion && <div className="modal-fondo" onClick={() => setCitaConfirmacion(null)}><div className="modal confirmacion-cita" onClick={(e) => e.stopPropagation()}><CheckCircle2 size={42} /><h2>Solicitud recibida</h2><p>Tu solicitud #{citaConfirmacion.id} fue registrada. Recepción verificará los datos y se comunicará contigo para confirmar la cita.</p><button className="boton-primario" onClick={() => setCitaConfirmacion(null)}>Entendido</button></div></div>);
+  }
 
-      {carritoAbierto && (
+  function mostrarCarritoAbierto() {
+    return (carritoAbierto && (
         <div className="modal-fondo" onClick={() => setCarritoAbierto(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
             <div className="modal-encabezado">
@@ -326,9 +314,11 @@ export default function Tienda() {
             )}
           </div>
         </div>
-      )}
+      ));
+  }
 
-      {checkoutAbierto && (
+  function mostrarCheckoutAbierto() {
+    return (checkoutAbierto && (
         <div className="modal-fondo" onClick={() => setCheckoutAbierto(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-encabezado">
@@ -388,9 +378,11 @@ export default function Tienda() {
             </form>
           </div>
         </div>
-      )}
+      ));
+  }
 
-      {confirmacion && (
+  function mostrarConfirmacion() {
+    return (confirmacion && (
         <div className="modal-fondo" onClick={() => setConfirmacion(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
             <CheckCircle2 size={40} strokeWidth={1.5} color="var(--color-success)" style={{ margin: '8px auto' }} />
@@ -400,7 +392,60 @@ export default function Tienda() {
             <button className="boton-primario" style={{ margin: '0 auto' }} onClick={() => setConfirmacion(null)}>Entendido</button>
           </div>
         </div>
-      )}
+      ));
+  }
+
+  return (
+    <div className="tienda-pagina">
+      <header className="tienda-header">
+        <div className="tienda-marca">
+          <img className="tienda-logo" src={logoDorado} alt={`${APP_CONFIG.nombreEmpresa} - ${APP_CONFIG.eslogan}`} />
+        </div>
+        <div className="tienda-tabs" role="tablist">
+          <button className={vista === 'productos' ? 'activo' : ''} onClick={() => setVista('productos')}><Package size={16} /> Productos</button>
+          <button className={vista === 'servicios' ? 'activo' : ''} onClick={() => setVista('servicios')}><Stethoscope size={16} /> Servicios y citas</button>
+          <button className={vista === 'sedes' ? 'activo' : ''} onClick={() => setVista('sedes')}><MapPin size={16} /> Encuéntranos</button>
+          <button className={vista === 'noticias' ? 'activo' : ''} onClick={() => setVista('noticias')}><Newspaper size={16} /> Noticias</button>
+        </div>
+        <div className="tienda-header-acciones">
+          <a className="tienda-social-boton" href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer" title={`Instagram ${APP_CONFIG.instagramUsuario}`}><Instagram size={18} /></a>
+          <button className="tienda-carrito-boton" onClick={() => setCarritoAbierto(true)} title="Ver carrito"><ShoppingCart size={19} strokeWidth={1.75} />{cantidadTotal > 0 && <span className="tienda-carrito-contador">{cantidadTotal}</span>}</button>
+        </div>
+      </header>
+
+      <section className="tienda-presentacion">
+        <div className="tienda-presentacion-interior">
+          <p className="tienda-eyebrow">Dra. Karen Miss Retana</p>
+          <h1>Medicina estética avanzada</h1>
+          <p className="tienda-presentacion-texto">Tratamientos personalizados para acompañar una versión más segura y auténtica de ti.</p>
+          <p className="tienda-tratamientos">Sculptra <span>·</span> Botox <span>·</span> Radiesse <span>·</span> K-Skin</p>
+          <div className="tienda-presentacion-acciones">
+            <button className="boton-primario" onClick={() => setVista('servicios')}><CalendarDays size={17} /> Reservar cita</button>
+            <a href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={17} /> Ver Instagram <ArrowRight size={15} /></a>
+          </div>
+        </div>
+      </section>
+
+      <main className="tienda-contenido">
+        {mostrarCatalogo()}
+      </main>
+
+      {mostrarServicioDetalle()}
+
+      <footer className="tienda-footer">
+        <img className="tienda-footer-logo" src={logoDorado} alt="K-MISS Medicina Estética Avanzada" />
+        <nav><a href={APP_CONFIG.instagramUrl} target="_blank" rel="noreferrer"><Instagram size={17} /> {APP_CONFIG.instagramUsuario}</a><a href={`https://wa.me/${APP_CONFIG.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle size={17} /> WhatsApp 5578-4833</a></nav>
+      </footer>
+
+      {mostrarCitaAbierta()}
+
+      {mostrarCitaConfirmacion()}
+
+      {mostrarCarritoAbierto()}
+
+      {mostrarCheckoutAbierto()}
+
+      {mostrarConfirmacion()}
     </div>
   );
 }

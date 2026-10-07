@@ -259,13 +259,100 @@ export default function Ajustes() {
     catch (err) { setError(err.message); }
   }
 
+    function mostrarError() {
+    return (error && <div className="ajustes-alerta" role="alert"><span>{error}</span><button onClick={() => setError('')} title="Cerrar aviso"><X size={16} /></button></div>);
+  }
+
+  function mostrarModal() {
+    return (modal && <div className="modal-fondo" onClick={() => setModal(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-encabezado"><h2>{editando ? 'Editar categoría' : 'Nueva categoría'}</h2><button className="modal-cerrar" onClick={() => setModal(false)}><X size={18} /></button></div>
+        <form className="formulario-grid" onSubmit={guardar}>
+          <label className="campo-ancho">Nombre *<input required value={formulario.nombre} onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })} /></label>
+          <label>Orden<input type="number" min="0" value={formulario.orden} onChange={(e) => setFormulario({ ...formulario, orden: Number(e.target.value) })} /></label>
+          <label className="campo-checkbox"><input type="checkbox" checked={formulario.activo} onChange={(e) => setFormulario({ ...formulario, activo: e.target.checked })} />Categoría activa</label>
+          {error && <p className="login-error campo-ancho">{error}</p>}
+          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModal(false)}>Cancelar</button><button className="boton-primario">Guardar</button></div>
+        </form>
+      </div></div>);
+  }
+
+  function mostrarModalPromo() {
+    return (modalPromo && <div className="modal-fondo" onClick={() => setModalPromo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-encabezado"><h2>{promoEditando ? 'Editar promoción' : 'Nueva promoción'}</h2><button className="modal-cerrar" onClick={() => setModalPromo(false)}><X size={18} /></button></div>
+        <form className="formulario-grid" onSubmit={guardarPromocion}>
+          <div className="campo-ancho promo-alcance"><span>Aplicar promoción a *</span><div role="group" aria-label="Alcance de la promoción"><button type="button" className={promoFormulario.alcance === 'producto' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('producto')}><Package size={16} /> Un artículo</button><button type="button" className={promoFormulario.alcance === 'categoria' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('categoria')}><Tags size={16} /> Una categoría</button></div></div>
+          {promoFormulario.alcance === 'producto' ? <div className="campo-ancho promo-selector-producto"><span className="campo-etiqueta">Buscar artículo *</span><div className={`promo-buscador ${promoFormulario.producto_id ? 'seleccionado' : ''}`}><Search size={17} /><input required autoComplete="off" role="combobox" aria-expanded={promoResultadosAbiertos} aria-controls="promo-resultados" placeholder="Escribe al menos 2 letras del artículo" value={promoBusqueda} onFocus={() => { if (productos.length) setPromoResultadosAbiertos(true); }} onChange={(e) => { setPromoBusqueda(e.target.value); setPromoFormulario({ ...promoFormulario, producto_id: '' }); }} onKeyDown={(e) => { if (e.key === 'Escape') setPromoResultadosAbiertos(false); }} />{promoBuscando && <small>Buscando…</small>}</div>
+            {promoResultadosAbiertos && <div className="promo-resultados" id="promo-resultados" role="listbox">{productos.length ? productos.map((producto) => <button type="button" role="option" key={producto.id} onClick={() => seleccionarProductoPromocion(producto)}><span><strong>{producto.nombre}</strong><small>{producto.categoria || 'Sin categoría'}</small></span><b>Q{Number(producto.precio).toFixed(2)}</b></button>) : <p>No se encontraron artículos similares.</p>}</div>}
+            <small className="promo-ayuda">{promoFormulario.producto_id ? 'Artículo seleccionado' : 'Los resultados aparecerán mientras escribes.'}</small>
+          </div> : <label className="campo-ancho">Categoría *<select required value={promoFormulario.categoria_id} onChange={(e) => setPromoFormulario({ ...promoFormulario, categoria_id: Number(e.target.value), producto_id: '' })}><option value="">Selecciona una categoría</option>{categorias.filter((categoria) => categoria.activo || categoria.id === promoFormulario.categoria_id).map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>)}</select><small>El descuento se aplicará a todos los artículos activos de esta categoría.</small></label>}
+          <label>Descuento (%) *<input type="number" required min="1" max="100" step="1" value={promoFormulario.descuento_porcentaje} onChange={(e) => setPromoFormulario({ ...promoFormulario, descuento_porcentaje: Number(e.target.value) })} /></label>
+          <label>Fecha de inicio *<input type="date" required value={promoFormulario.fecha_inicio} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_inicio: e.target.value })} /></label>
+          <label>Fecha de finalización<input type="date" min={promoFormulario.fecha_inicio} value={promoFormulario.fecha_fin} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_fin: e.target.value })} /></label>
+          <label className="campo-checkbox"><input type="checkbox" checked={promoFormulario.activo} onChange={(e) => setPromoFormulario({ ...promoFormulario, activo: e.target.checked })} />Promoción activa</label>
+          {error && <p className="login-error campo-ancho">{error}</p>}
+          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalPromo(false)}>Cancelar</button><button className="boton-primario" disabled={promoFormulario.alcance === 'producto' ? !promoFormulario.producto_id : !promoFormulario.categoria_id}>Guardar promoción</button></div>
+        </form>
+      </div></div>);
+  }
+
+  function mostrarModalNoticia() {
+    return (modalNoticia && <div className="modal-fondo" onClick={() => setModalNoticia(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-encabezado"><h2>{noticiaEditando ? 'Editar noticia' : 'Nueva noticia'}</h2><button className="modal-cerrar" onClick={() => setModalNoticia(false)}><X size={18} /></button></div>
+        <form className="formulario-grid" onSubmit={guardarNoticia}>
+          <label className="campo-ancho producto-imagen-campo">Imagen<div className="producto-imagen-selector"><div className="producto-imagen-preview">{noticiaPreview ? <img src={noticiaPreview} alt="Vista previa" /> : <ImagePlus size={28} />}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarImagenNoticia} /><small>JPG, PNG o WEBP. Máximo 5 MB.</small></div></div></label>
+          <label className="campo-ancho">Título *<input required value={noticiaFormulario.titulo} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,titulo:e.target.value})} /></label>
+          <label className="campo-ancho">Resumen<textarea rows={2} maxLength={300} value={noticiaFormulario.resumen} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,resumen:e.target.value})} /></label>
+          <label className="campo-ancho">Contenido<textarea rows={5} value={noticiaFormulario.contenido} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,contenido:e.target.value})} /></label>
+          <label>Fecha del evento<input type="date" value={noticiaFormulario.fecha_evento} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,fecha_evento:e.target.value})} /></label>
+          <label>Enlace externo<input type="url" placeholder="https://..." value={noticiaFormulario.enlace_url} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,enlace_url:e.target.value})} /></label>
+          <label className="campo-checkbox"><input type="checkbox" checked={noticiaFormulario.activo} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,activo:e.target.checked})} />Visible en la tienda</label>
+          {error && <p className="login-error campo-ancho">{error}</p>}
+          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalNoticia(false)}>Cancelar</button><button className="boton-primario">Publicar noticia</button></div>
+        </form>
+      </div></div>);
+  }
+
+  function mostrarModalSede() {
+    return (modalSede && <div className="modal-fondo" onClick={() => setModalSede(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{sedeEditando ? 'Editar sede' : 'Nueva sede'}</h2><button className="modal-cerrar" onClick={() => setModalSede(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarSede}>
+        <label className="campo-ancho">Nombre *<input required value={sedeFormulario.nombre} onChange={(e) => setSedeFormulario({...sedeFormulario,nombre:e.target.value})} /></label>
+        <label className="campo-ancho">Dirección *<input required value={sedeFormulario.direccion} onChange={(e) => setSedeFormulario({...sedeFormulario,direccion:e.target.value})} /></label>
+        <label>Teléfono<input type="tel" value={sedeFormulario.telefono} onChange={(e) => setSedeFormulario({...sedeFormulario,telefono:e.target.value})} /></label>
+        <label className="campo-checkbox"><input type="checkbox" checked={sedeFormulario.activo} onChange={(e) => setSedeFormulario({...sedeFormulario,activo:e.target.checked})} />Sede activa</label>
+        {error && <p className="login-error campo-ancho">{error}</p>}<div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalSede(false)}>Cancelar</button><button className="boton-primario">Guardar sede</button></div>
+      </form></div></div>);
+  }
+
+  function mostrarModalHorario() {
+    return (modalHorario && <div className="modal-fondo" onClick={() => setModalHorario(false)}><div className="modal modal-horario-semanal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{horarioEditando ? 'Editar horario semanal' : 'Configurar horario semanal'}</h2><button className="modal-cerrar" onClick={() => setModalHorario(false)}><X size={18} /></button></div><form onSubmit={guardarHorario}>
+        <div className="formulario-grid horario-identificacion"><label>Médico *<select required disabled={Boolean(horarioEditando)} value={horarioFormulario.medico_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label><label>Sede *<select required value={horarioFormulario.sede_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label></div>
+        <div className="editor-semana"><div className="editor-semana-cabecera"><span>Día</span><span>Primera jornada</span><span>Segunda jornada</span></div>{[1,2,3,4,5,6,0].map((dia)=>{const bloques=horarioFormulario.semana?.[dia]||[]; const activo=bloques.length>0; return <div className={`editor-dia ${activo?'activo':''}`} key={dia}>
+          <label className="editor-dia-nombre"><input type="checkbox" checked={activo} onChange={(e)=>alternarDiaHorario(dia,e.target.checked)} />{DIAS[dia]}</label>
+          <div className="editor-bloque"><input aria-label={`Inicio ${DIAS[dia]}`} type="time" required={activo} disabled={!activo} value={bloques[0]?.inicio||''} onChange={(e)=>cambiarBloque(dia,0,'inicio',e.target.value)} /><span>a</span><input aria-label={`Fin ${DIAS[dia]}`} type="time" required={activo} disabled={!activo} value={bloques[0]?.fin||''} onChange={(e)=>cambiarBloque(dia,0,'fin',e.target.value)} /></div>
+          <div className="editor-segundo"><label><input type="checkbox" disabled={!activo} checked={bloques.length>1} onChange={(e)=>alternarSegundoBloque(dia,e.target.checked)} />Agregar</label><div className="editor-bloque"><input aria-label={`Segundo inicio ${DIAS[dia]}`} type="time" required={bloques.length>1} disabled={bloques.length<2} value={bloques[1]?.inicio||''} onChange={(e)=>cambiarBloque(dia,1,'inicio',e.target.value)} /><span>a</span><input aria-label={`Segundo fin ${DIAS[dia]}`} type="time" required={bloques.length>1} disabled={bloques.length<2} value={bloques[1]?.fin||''} onChange={(e)=>cambiarBloque(dia,1,'fin',e.target.value)} /></div></div>
+        </div>;})}</div>
+        {error && <p className="login-error">{error}</p>}<div className="modal-acciones"><button type="button" className="boton-secundario" onClick={() => setModalHorario(false)}>Cancelar</button><button className="boton-primario">Guardar horario semanal</button></div>
+      </form></div></div>);
+  }
+
+  function mostrarModalBloqueo() {
+    return (modalBloqueo && <div className="modal-fondo" onClick={() => setModalBloqueo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>Bloquear agenda</h2><button className="modal-cerrar" onClick={() => setModalBloqueo(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarBloqueo}>
+        <label>Médico *<select required value={bloqueoFormulario.medico_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
+        <label>Sede *<select required value={bloqueoFormulario.sede_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
+        <label>Fecha *<input type="date" required value={bloqueoFormulario.fecha} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,fecha:e.target.value})} /></label>
+        <label>Desde *<input type="time" required value={bloqueoFormulario.hora_inicio} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,hora_inicio:e.target.value})} /></label>
+        <label>Hasta *<input type="time" required value={bloqueoFormulario.hora_fin} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,hora_fin:e.target.value})} /></label>
+        <label className="campo-ancho">Motivo *<input required value={bloqueoFormulario.motivo} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,motivo:e.target.value})} /></label>
+        {error && <p className="login-error campo-ancho">{error}</p>}<div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalBloqueo(false)}>Cancelar</button><button className="boton-primario">Guardar bloqueo</button></div>
+      </form></div></div>);
+  }
+
   return (
     <div className="pagina">
       <header className="pagina-encabezado">
         <div><h1>Ajustes</h1><p>Catálogos y parámetros del sistema</p></div>
       </header>
 
-      {error && <div className="ajustes-alerta" role="alert"><span>{error}</span><button onClick={() => setError('')} title="Cerrar aviso"><X size={16} /></button></div>}
+      {mostrarError()}
 
       <section className="ajustes-seccion">
         <div className="ajustes-encabezado">
@@ -340,76 +427,17 @@ export default function Ajustes() {
         </tbody></table></div>
       </section>
 
-      {modal && <div className="modal-fondo" onClick={() => setModal(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-encabezado"><h2>{editando ? 'Editar categoría' : 'Nueva categoría'}</h2><button className="modal-cerrar" onClick={() => setModal(false)}><X size={18} /></button></div>
-        <form className="formulario-grid" onSubmit={guardar}>
-          <label className="campo-ancho">Nombre *<input required value={formulario.nombre} onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })} /></label>
-          <label>Orden<input type="number" min="0" value={formulario.orden} onChange={(e) => setFormulario({ ...formulario, orden: Number(e.target.value) })} /></label>
-          <label className="campo-checkbox"><input type="checkbox" checked={formulario.activo} onChange={(e) => setFormulario({ ...formulario, activo: e.target.checked })} />Categoría activa</label>
-          {error && <p className="login-error campo-ancho">{error}</p>}
-          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModal(false)}>Cancelar</button><button className="boton-primario">Guardar</button></div>
-        </form>
-      </div></div>}
+      {mostrarModal()}
 
-      {modalPromo && <div className="modal-fondo" onClick={() => setModalPromo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-encabezado"><h2>{promoEditando ? 'Editar promoción' : 'Nueva promoción'}</h2><button className="modal-cerrar" onClick={() => setModalPromo(false)}><X size={18} /></button></div>
-        <form className="formulario-grid" onSubmit={guardarPromocion}>
-          <div className="campo-ancho promo-alcance"><span>Aplicar promoción a *</span><div role="group" aria-label="Alcance de la promoción"><button type="button" className={promoFormulario.alcance === 'producto' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('producto')}><Package size={16} /> Un artículo</button><button type="button" className={promoFormulario.alcance === 'categoria' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('categoria')}><Tags size={16} /> Una categoría</button></div></div>
-          {promoFormulario.alcance === 'producto' ? <div className="campo-ancho promo-selector-producto"><span className="campo-etiqueta">Buscar artículo *</span><div className={`promo-buscador ${promoFormulario.producto_id ? 'seleccionado' : ''}`}><Search size={17} /><input required autoComplete="off" role="combobox" aria-expanded={promoResultadosAbiertos} aria-controls="promo-resultados" placeholder="Escribe al menos 2 letras del artículo" value={promoBusqueda} onFocus={() => { if (productos.length) setPromoResultadosAbiertos(true); }} onChange={(e) => { setPromoBusqueda(e.target.value); setPromoFormulario({ ...promoFormulario, producto_id: '' }); }} onKeyDown={(e) => { if (e.key === 'Escape') setPromoResultadosAbiertos(false); }} />{promoBuscando && <small>Buscando…</small>}</div>
-            {promoResultadosAbiertos && <div className="promo-resultados" id="promo-resultados" role="listbox">{productos.length ? productos.map((producto) => <button type="button" role="option" key={producto.id} onClick={() => seleccionarProductoPromocion(producto)}><span><strong>{producto.nombre}</strong><small>{producto.categoria || 'Sin categoría'}</small></span><b>Q{Number(producto.precio).toFixed(2)}</b></button>) : <p>No se encontraron artículos similares.</p>}</div>}
-            <small className="promo-ayuda">{promoFormulario.producto_id ? 'Artículo seleccionado' : 'Los resultados aparecerán mientras escribes.'}</small>
-          </div> : <label className="campo-ancho">Categoría *<select required value={promoFormulario.categoria_id} onChange={(e) => setPromoFormulario({ ...promoFormulario, categoria_id: Number(e.target.value), producto_id: '' })}><option value="">Selecciona una categoría</option>{categorias.filter((categoria) => categoria.activo || categoria.id === promoFormulario.categoria_id).map((categoria) => <option key={categoria.id} value={categoria.id}>{categoria.nombre}</option>)}</select><small>El descuento se aplicará a todos los artículos activos de esta categoría.</small></label>}
-          <label>Descuento (%) *<input type="number" required min="1" max="100" step="1" value={promoFormulario.descuento_porcentaje} onChange={(e) => setPromoFormulario({ ...promoFormulario, descuento_porcentaje: Number(e.target.value) })} /></label>
-          <label>Fecha de inicio *<input type="date" required value={promoFormulario.fecha_inicio} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_inicio: e.target.value })} /></label>
-          <label>Fecha de finalización<input type="date" min={promoFormulario.fecha_inicio} value={promoFormulario.fecha_fin} onChange={(e) => setPromoFormulario({ ...promoFormulario, fecha_fin: e.target.value })} /></label>
-          <label className="campo-checkbox"><input type="checkbox" checked={promoFormulario.activo} onChange={(e) => setPromoFormulario({ ...promoFormulario, activo: e.target.checked })} />Promoción activa</label>
-          {error && <p className="login-error campo-ancho">{error}</p>}
-          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalPromo(false)}>Cancelar</button><button className="boton-primario" disabled={promoFormulario.alcance === 'producto' ? !promoFormulario.producto_id : !promoFormulario.categoria_id}>Guardar promoción</button></div>
-        </form>
-      </div></div>}
+      {mostrarModalPromo()}
 
-      {modalNoticia && <div className="modal-fondo" onClick={() => setModalNoticia(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-encabezado"><h2>{noticiaEditando ? 'Editar noticia' : 'Nueva noticia'}</h2><button className="modal-cerrar" onClick={() => setModalNoticia(false)}><X size={18} /></button></div>
-        <form className="formulario-grid" onSubmit={guardarNoticia}>
-          <label className="campo-ancho producto-imagen-campo">Imagen<div className="producto-imagen-selector"><div className="producto-imagen-preview">{noticiaPreview ? <img src={noticiaPreview} alt="Vista previa" /> : <ImagePlus size={28} />}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarImagenNoticia} /><small>JPG, PNG o WEBP. Máximo 5 MB.</small></div></div></label>
-          <label className="campo-ancho">Título *<input required value={noticiaFormulario.titulo} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,titulo:e.target.value})} /></label>
-          <label className="campo-ancho">Resumen<textarea rows={2} maxLength={300} value={noticiaFormulario.resumen} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,resumen:e.target.value})} /></label>
-          <label className="campo-ancho">Contenido<textarea rows={5} value={noticiaFormulario.contenido} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,contenido:e.target.value})} /></label>
-          <label>Fecha del evento<input type="date" value={noticiaFormulario.fecha_evento} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,fecha_evento:e.target.value})} /></label>
-          <label>Enlace externo<input type="url" placeholder="https://..." value={noticiaFormulario.enlace_url} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,enlace_url:e.target.value})} /></label>
-          <label className="campo-checkbox"><input type="checkbox" checked={noticiaFormulario.activo} onChange={(e) => setNoticiaFormulario({...noticiaFormulario,activo:e.target.checked})} />Visible en la tienda</label>
-          {error && <p className="login-error campo-ancho">{error}</p>}
-          <div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalNoticia(false)}>Cancelar</button><button className="boton-primario">Publicar noticia</button></div>
-        </form>
-      </div></div>}
+      {mostrarModalNoticia()}
 
-      {modalSede && <div className="modal-fondo" onClick={() => setModalSede(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{sedeEditando ? 'Editar sede' : 'Nueva sede'}</h2><button className="modal-cerrar" onClick={() => setModalSede(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarSede}>
-        <label className="campo-ancho">Nombre *<input required value={sedeFormulario.nombre} onChange={(e) => setSedeFormulario({...sedeFormulario,nombre:e.target.value})} /></label>
-        <label className="campo-ancho">Dirección *<input required value={sedeFormulario.direccion} onChange={(e) => setSedeFormulario({...sedeFormulario,direccion:e.target.value})} /></label>
-        <label>Teléfono<input type="tel" value={sedeFormulario.telefono} onChange={(e) => setSedeFormulario({...sedeFormulario,telefono:e.target.value})} /></label>
-        <label className="campo-checkbox"><input type="checkbox" checked={sedeFormulario.activo} onChange={(e) => setSedeFormulario({...sedeFormulario,activo:e.target.checked})} />Sede activa</label>
-        {error && <p className="login-error campo-ancho">{error}</p>}<div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalSede(false)}>Cancelar</button><button className="boton-primario">Guardar sede</button></div>
-      </form></div></div>}
+      {mostrarModalSede()}
 
-      {modalHorario && <div className="modal-fondo" onClick={() => setModalHorario(false)}><div className="modal modal-horario-semanal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{horarioEditando ? 'Editar horario semanal' : 'Configurar horario semanal'}</h2><button className="modal-cerrar" onClick={() => setModalHorario(false)}><X size={18} /></button></div><form onSubmit={guardarHorario}>
-        <div className="formulario-grid horario-identificacion"><label>Médico *<select required disabled={Boolean(horarioEditando)} value={horarioFormulario.medico_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label><label>Sede *<select required value={horarioFormulario.sede_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label></div>
-        <div className="editor-semana"><div className="editor-semana-cabecera"><span>Día</span><span>Primera jornada</span><span>Segunda jornada</span></div>{[1,2,3,4,5,6,0].map((dia)=>{const bloques=horarioFormulario.semana?.[dia]||[]; const activo=bloques.length>0; return <div className={`editor-dia ${activo?'activo':''}`} key={dia}>
-          <label className="editor-dia-nombre"><input type="checkbox" checked={activo} onChange={(e)=>alternarDiaHorario(dia,e.target.checked)} />{DIAS[dia]}</label>
-          <div className="editor-bloque"><input aria-label={`Inicio ${DIAS[dia]}`} type="time" required={activo} disabled={!activo} value={bloques[0]?.inicio||''} onChange={(e)=>cambiarBloque(dia,0,'inicio',e.target.value)} /><span>a</span><input aria-label={`Fin ${DIAS[dia]}`} type="time" required={activo} disabled={!activo} value={bloques[0]?.fin||''} onChange={(e)=>cambiarBloque(dia,0,'fin',e.target.value)} /></div>
-          <div className="editor-segundo"><label><input type="checkbox" disabled={!activo} checked={bloques.length>1} onChange={(e)=>alternarSegundoBloque(dia,e.target.checked)} />Agregar</label><div className="editor-bloque"><input aria-label={`Segundo inicio ${DIAS[dia]}`} type="time" required={bloques.length>1} disabled={bloques.length<2} value={bloques[1]?.inicio||''} onChange={(e)=>cambiarBloque(dia,1,'inicio',e.target.value)} /><span>a</span><input aria-label={`Segundo fin ${DIAS[dia]}`} type="time" required={bloques.length>1} disabled={bloques.length<2} value={bloques[1]?.fin||''} onChange={(e)=>cambiarBloque(dia,1,'fin',e.target.value)} /></div></div>
-        </div>;})}</div>
-        {error && <p className="login-error">{error}</p>}<div className="modal-acciones"><button type="button" className="boton-secundario" onClick={() => setModalHorario(false)}>Cancelar</button><button className="boton-primario">Guardar horario semanal</button></div>
-      </form></div></div>}
+      {mostrarModalHorario()}
 
-      {modalBloqueo && <div className="modal-fondo" onClick={() => setModalBloqueo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>Bloquear agenda</h2><button className="modal-cerrar" onClick={() => setModalBloqueo(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarBloqueo}>
-        <label>Médico *<select required value={bloqueoFormulario.medico_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
-        <label>Sede *<select required value={bloqueoFormulario.sede_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
-        <label>Fecha *<input type="date" required value={bloqueoFormulario.fecha} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,fecha:e.target.value})} /></label>
-        <label>Desde *<input type="time" required value={bloqueoFormulario.hora_inicio} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,hora_inicio:e.target.value})} /></label>
-        <label>Hasta *<input type="time" required value={bloqueoFormulario.hora_fin} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,hora_fin:e.target.value})} /></label>
-        <label className="campo-ancho">Motivo *<input required value={bloqueoFormulario.motivo} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,motivo:e.target.value})} /></label>
-        {error && <p className="login-error campo-ancho">{error}</p>}<div className="modal-acciones campo-ancho"><button type="button" className="boton-secundario" onClick={() => setModalBloqueo(false)}>Cancelar</button><button className="boton-primario">Guardar bloqueo</button></div>
-      </form></div></div>}
+      {mostrarModalBloqueo()}
     </div>
   );
 }

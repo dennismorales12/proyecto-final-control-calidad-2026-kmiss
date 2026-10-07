@@ -134,15 +134,7 @@ ALTER TABLE citas DROP CONSTRAINT IF EXISTS citas_estado_check;
 ALTER TABLE citas ADD CONSTRAINT citas_estado_check
     CHECK (estado IN ('solicitada', 'programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio'));
 INSERT INTO horarios_semanales (medico_id, sede_id, semana)
-SELECT u.id, s.id, '{
-  "0": [],
-  "1": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "2": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "3": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "4": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "5": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "6": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}]
-}'::jsonb
+SELECT u.id, s.id, '{ "0": [], "1": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "2": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "3": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "4": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "5": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "6": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}] }'::jsonb
 FROM usuarios u CROSS JOIN (SELECT id FROM sedes WHERE activo=TRUE ORDER BY id LIMIT 1) s
 WHERE u.rol = 'medico' AND u.activo = TRUE
   AND NOT EXISTS (SELECT 1 FROM horarios_semanales hs WHERE hs.medico_id=u.id)
