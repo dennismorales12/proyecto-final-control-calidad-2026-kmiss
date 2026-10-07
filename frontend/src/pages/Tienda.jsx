@@ -237,7 +237,7 @@ export default function Tienda() {
   }
 
   function mostrarServicioDetalle() {
-    return (servicioDetalle && <div className="modal-fondo" onClick={() => setServicioDetalle(null)}><div className="modal servicio-detalle-modal" onClick={(e) => e.stopPropagation()}>
+    return (servicioDetalle && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setServicioDetalle(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setServicioDetalle(null); }} role="presentation"><div className="modal servicio-detalle-modal" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda">
         <div className="modal-encabezado"><h2>{servicioDetalle.nombre}</h2><button className="modal-cerrar" onClick={() => setServicioDetalle(null)}><X size={18} /></button></div>
         <div className="servicio-detalle-imagen"><ImagenCatalogo ruta={servicioDetalle.imagen_url} nombre={servicioDetalle.nombre} Icono={Stethoscope} /></div>
         {servicioDetalle.especialidad && <span className="etiqueta">{servicioDetalle.especialidad}</span>}
@@ -248,7 +248,7 @@ export default function Tienda() {
   }
 
   function mostrarCitaAbierta() {
-    return (citaAbierta && <div className="modal-fondo" onClick={() => setCitaAbierta(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+    return (citaAbierta && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setCitaAbierta(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setCitaAbierta(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda">
         <div className="modal-encabezado"><h2>Solicitar cita</h2><button className="modal-cerrar" onClick={() => setCitaAbierta(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={solicitarCita}>
           <label className="campo-ancho">Establecimiento *<select required value={datosCita.sede_id} onChange={(e) => setDatosCita({ ...datosCita, sede_id: Number(e.target.value) })}><option value="">Selecciona una sede</option>{sedes.map((s) => <option key={s.id} value={s.id}>{s.nombre} · {s.direccion}</option>)}</select></label>
@@ -270,13 +270,13 @@ export default function Tienda() {
   }
 
   function mostrarCitaConfirmacion() {
-    return (citaConfirmacion && <div className="modal-fondo" onClick={() => setCitaConfirmacion(null)}><div className="modal confirmacion-cita" onClick={(e) => e.stopPropagation()}><CheckCircle2 size={42} /><h2>Solicitud recibida</h2><p>Tu solicitud #{citaConfirmacion.id} fue registrada. Recepción verificará los datos y se comunicará contigo para confirmar la cita.</p><button className="boton-primario" onClick={() => setCitaConfirmacion(null)}>Entendido</button></div></div>);
+    return (citaConfirmacion && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setCitaConfirmacion(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setCitaConfirmacion(null); }} role="presentation"><div className="modal confirmacion-cita" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda"><CheckCircle2 size={42} /><h2>Solicitud recibida</h2><p>Tu solicitud #{citaConfirmacion.id} fue registrada. Recepción verificará los datos y se comunicará contigo para confirmar la cita.</p><button className="boton-primario" onClick={() => setCitaConfirmacion(null)}>Entendido</button></div></div>);
   }
 
   function mostrarCarritoAbierto() {
     return (carritoAbierto && (
-        <div className="modal-fondo" onClick={() => setCarritoAbierto(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
+        <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setCarritoAbierto(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setCarritoAbierto(false); }} role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda" style={{ maxWidth: 440 }}>
             <div className="modal-encabezado">
               <h2>Tu carrito</h2>
               <button className="modal-cerrar" onClick={() => setCarritoAbierto(false)}><X size={18} /></button>
@@ -319,8 +319,8 @@ export default function Tienda() {
 
   function mostrarCheckoutAbierto() {
     return (checkoutAbierto && (
-        <div className="modal-fondo" onClick={() => setCheckoutAbierto(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setCheckoutAbierto(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setCheckoutAbierto(false); }} role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda">
             <div className="modal-encabezado">
               <h2>Completa tu pedido</h2>
               <button className="modal-cerrar" onClick={() => setCheckoutAbierto(false)}><X size={18} /></button>
@@ -383,8 +383,8 @@ export default function Tienda() {
 
   function mostrarConfirmacion() {
     return (confirmacion && (
-        <div className="modal-fondo" onClick={() => setConfirmacion(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, textAlign: 'center' }}>
+        <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setConfirmacion(null); }} onKeyDown={(e) => { if (e.key === 'Escape') setConfirmacion(null); }} role="presentation">
+          <div className="modal" role="dialog" aria-modal="true" aria-label="Detalle o formulario de la tienda" style={{ maxWidth: 400, textAlign: 'center' }}>
             <CheckCircle2 size={40} strokeWidth={1.5} color="var(--color-success)" style={{ margin: '8px auto' }} />
             <h2 style={{ marginBottom: 8 }}>¡Pedido recibido!</h2>
             <p className="texto-tenue" style={{ marginBottom: 4 }}>Tu pedido #{confirmacion.id} quedó registrado y los productos están reservados.</p>

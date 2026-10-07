@@ -3,18 +3,20 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, expect, test, vi } from 'vitest';
 
 // Aísla estado y efectos: prueba el renderizado, no navegación ni eventos reales.
-const estado = vi.hoisted(() => ({ indice: 0, valores: {} }));
+const estado = vi.hoisted(() => ({ indice: 0, valores: {}, cambios: {} }));
 vi.mock('react', async (importOriginal) => {
   const original = await importOriginal();
   return { ...original, useEffect: vi.fn(), useState: (inicial) => {
     const indice = estado.indice++;
     const valor = Object.hasOwn(estado.valores, indice) ? estado.valores[indice] : (typeof inicial === 'function' ? inicial() : inicial);
-    return [valor, vi.fn()];
+    const cambiar = vi.fn();
+    estado.cambios[indice] = cambiar;
+    return [valor, cambiar];
   } };
 });
 import Tienda from './Tienda';
 import Ajustes from './Ajustes';
-beforeEach(() => { estado.indice = 0; estado.valores = {}; });
+beforeEach(() => { estado.indice = 0; estado.valores = {}; estado.cambios = {}; });
 const producto = { id: 1, nombre: 'Crema de prueba', precio: 100, stock_actual: 3, categoria: 'Cuidado', descuento_porcentaje: 10, precio_final: 90 };
 const servicio = { id: 1, nombre: 'Consulta de prueba', precio: 100, duracion_minutos: 30 };
 function mostrar(Componente, valores) {
@@ -55,4 +57,40 @@ test.each([
   ['bloqueo de agenda', {23:true}, 'Guardar bloqueo'],
 ])('Ajustes mantiene %s tras separar los formularios', (_, valores, esperado) => {
   expect(mostrar(Ajustes,valores)).toContain(esperado);
+});
+
+function buscarFondo(nodo) {
+  if (!nodo) return null;
+  if (Array.isArray(nodo)) return nodo.map(buscarFondo).find(Boolean);
+  if (nodo.props?.className === 'modal-fondo') return nodo;
+  return buscarFondo(nodo.props?.children);
+}
+test.each([
+  ['detalle del servicio',Tienda,16,servicio,null],
+  ['solicitud de cita',Tienda,14,true,false],
+  ['confirmación de cita',Tienda,15,{id:88},null],
+  ['carrito',Tienda,9,true,false],
+  ['pedido',Tienda,10,true,false],
+  ['confirmación del pedido',Tienda,11,{id:22},null],
+  ['categoría',Ajustes,1,true,false],
+  ['promoción',Ajustes,7,true,false],
+  ['noticia',Ajustes,26,true,false],
+  ['sede',Ajustes,17,true,false],
+  ['horario',Ajustes,20,true,false],
+  ['bloqueo',Ajustes,23,true,false],
+])('el modal de %s se cierra con Escape o clic en fondo, no al escribir o pulsar dentro',(_,Componente,indice,valor,cierre)=>{
+  estado.valores={[indice]:valor};
+  const fondo=buscarFondo(Componente());
+  expect(fondo).toBeTruthy();
+  expect(fondo.props.children.props.role).toBe('dialog');
+  expect(fondo.props.children.props['aria-modal']).toBe('true');
+  const superficie={};
+  fondo.props.onClick({target:{},currentTarget:superficie});
+  fondo.props.onKeyDown({key:'Enter'});
+  expect(estado.cambios[indice]).not.toHaveBeenCalled();
+  fondo.props.onKeyDown({key:'Escape'});
+  expect(estado.cambios[indice]).toHaveBeenCalledWith(cierre);
+  estado.cambios[indice].mockClear();
+  fondo.props.onClick({target:superficie,currentTarget:superficie});
+  expect(estado.cambios[indice]).toHaveBeenCalledWith(cierre);
 });

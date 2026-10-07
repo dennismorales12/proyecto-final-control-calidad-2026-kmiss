@@ -264,7 +264,7 @@ export default function Ajustes() {
   }
 
   function mostrarModal() {
-    return (modal && <div className="modal-fondo" onClick={() => setModal(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+    return (modal && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModal(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModal(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes">
         <div className="modal-encabezado"><h2>{editando ? 'Editar categoría' : 'Nueva categoría'}</h2><button className="modal-cerrar" onClick={() => setModal(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={guardar}>
           <label className="campo-ancho">Nombre *<input required value={formulario.nombre} onChange={(e) => setFormulario({ ...formulario, nombre: e.target.value })} /></label>
@@ -277,7 +277,7 @@ export default function Ajustes() {
   }
 
   function mostrarModalPromo() {
-    return (modalPromo && <div className="modal-fondo" onClick={() => setModalPromo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+    return (modalPromo && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModalPromo(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModalPromo(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes">
         <div className="modal-encabezado"><h2>{promoEditando ? 'Editar promoción' : 'Nueva promoción'}</h2><button className="modal-cerrar" onClick={() => setModalPromo(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={guardarPromocion}>
           <div className="campo-ancho promo-alcance"><span>Aplicar promoción a *</span><div role="group" aria-label="Alcance de la promoción"><button type="button" className={promoFormulario.alcance === 'producto' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('producto')}><Package size={16} /> Un artículo</button><button type="button" className={promoFormulario.alcance === 'categoria' ? 'activo' : ''} onClick={() => cambiarAlcancePromocion('categoria')}><Tags size={16} /> Una categoría</button></div></div>
@@ -296,7 +296,7 @@ export default function Ajustes() {
   }
 
   function mostrarModalNoticia() {
-    return (modalNoticia && <div className="modal-fondo" onClick={() => setModalNoticia(false)}><div className="modal" onClick={(e) => e.stopPropagation()}>
+    return (modalNoticia && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModalNoticia(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModalNoticia(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes">
         <div className="modal-encabezado"><h2>{noticiaEditando ? 'Editar noticia' : 'Nueva noticia'}</h2><button className="modal-cerrar" onClick={() => setModalNoticia(false)}><X size={18} /></button></div>
         <form className="formulario-grid" onSubmit={guardarNoticia}>
           <label className="campo-ancho producto-imagen-campo">Imagen<div className="producto-imagen-selector"><div className="producto-imagen-preview">{noticiaPreview ? <img src={noticiaPreview} alt="Vista previa" /> : <ImagePlus size={28} />}</div><div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarImagenNoticia} /><small>JPG, PNG o WEBP. Máximo 5 MB.</small></div></div></label>
@@ -313,7 +313,7 @@ export default function Ajustes() {
   }
 
   function mostrarModalSede() {
-    return (modalSede && <div className="modal-fondo" onClick={() => setModalSede(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{sedeEditando ? 'Editar sede' : 'Nueva sede'}</h2><button className="modal-cerrar" onClick={() => setModalSede(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarSede}>
+    return (modalSede && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModalSede(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModalSede(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes"><div className="modal-encabezado"><h2>{sedeEditando ? 'Editar sede' : 'Nueva sede'}</h2><button className="modal-cerrar" onClick={() => setModalSede(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarSede}>
         <label className="campo-ancho">Nombre *<input required value={sedeFormulario.nombre} onChange={(e) => setSedeFormulario({...sedeFormulario,nombre:e.target.value})} /></label>
         <label className="campo-ancho">Dirección *<input required value={sedeFormulario.direccion} onChange={(e) => setSedeFormulario({...sedeFormulario,direccion:e.target.value})} /></label>
         <label>Teléfono<input type="tel" value={sedeFormulario.telefono} onChange={(e) => setSedeFormulario({...sedeFormulario,telefono:e.target.value})} /></label>
@@ -323,7 +323,7 @@ export default function Ajustes() {
   }
 
   function mostrarModalHorario() {
-    return (modalHorario && <div className="modal-fondo" onClick={() => setModalHorario(false)}><div className="modal modal-horario-semanal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>{horarioEditando ? 'Editar horario semanal' : 'Configurar horario semanal'}</h2><button className="modal-cerrar" onClick={() => setModalHorario(false)}><X size={18} /></button></div><form onSubmit={guardarHorario}>
+    return (modalHorario && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModalHorario(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModalHorario(false); }} role="presentation"><div className="modal modal-horario-semanal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes"><div className="modal-encabezado"><h2>{horarioEditando ? 'Editar horario semanal' : 'Configurar horario semanal'}</h2><button className="modal-cerrar" onClick={() => setModalHorario(false)}><X size={18} /></button></div><form onSubmit={guardarHorario}>
         <div className="formulario-grid horario-identificacion"><label>Médico *<select required disabled={Boolean(horarioEditando)} value={horarioFormulario.medico_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label><label>Sede *<select required value={horarioFormulario.sede_id} onChange={(e) => setHorarioFormulario({...horarioFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label></div>
         <div className="editor-semana"><div className="editor-semana-cabecera"><span>Día</span><span>Primera jornada</span><span>Segunda jornada</span></div>{[1,2,3,4,5,6,0].map((dia)=>{const bloques=horarioFormulario.semana?.[dia]||[]; const activo=bloques.length>0; return <div className={`editor-dia ${activo?'activo':''}`} key={dia}>
           <label className="editor-dia-nombre"><input type="checkbox" checked={activo} onChange={(e)=>alternarDiaHorario(dia,e.target.checked)} />{DIAS[dia]}</label>
@@ -335,7 +335,7 @@ export default function Ajustes() {
   }
 
   function mostrarModalBloqueo() {
-    return (modalBloqueo && <div className="modal-fondo" onClick={() => setModalBloqueo(false)}><div className="modal" onClick={(e) => e.stopPropagation()}><div className="modal-encabezado"><h2>Bloquear agenda</h2><button className="modal-cerrar" onClick={() => setModalBloqueo(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarBloqueo}>
+    return (modalBloqueo && <div className="modal-fondo" onClick={(e) => { if (e.target === e.currentTarget) setModalBloqueo(false); }} onKeyDown={(e) => { if (e.key === 'Escape') setModalBloqueo(false); }} role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Formulario de ajustes"><div className="modal-encabezado"><h2>Bloquear agenda</h2><button className="modal-cerrar" onClick={() => setModalBloqueo(false)}><X size={18} /></button></div><form className="formulario-grid" onSubmit={guardarBloqueo}>
         <label>Médico *<select required value={bloqueoFormulario.medico_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,medico_id:Number(e.target.value)})}><option value="">Selecciona</option>{medicos.map((m)=><option key={m.id} value={m.id}>{m.nombre}</option>)}</select></label>
         <label>Sede *<select required value={bloqueoFormulario.sede_id} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,sede_id:Number(e.target.value)})}><option value="">Selecciona</option>{sedes.filter((s)=>s.activo).map((s)=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>
         <label>Fecha *<input type="date" required value={bloqueoFormulario.fecha} onChange={(e) => setBloqueoFormulario({...bloqueoFormulario,fecha:e.target.value})} /></label>
