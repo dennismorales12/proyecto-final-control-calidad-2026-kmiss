@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const { crearOpcionesCors } = require('./configuracionSeguridad');
 
 const authRoutes = require('./routes/auth');
 const pacientesRoutes = require('./routes/pacientes');
@@ -18,7 +19,8 @@ const mediaRoutes = require('./routes/media');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-app.use(cors());
+app.disable('x-powered-by');
+app.use(cors(crearOpcionesCors(process.env.CORS_ORIGINS)));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 

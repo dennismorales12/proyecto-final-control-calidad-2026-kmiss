@@ -1,15 +1,13 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('./src/db');
+const { obtenerClaveDemo } = require('./src/configuracionSeguridad');
 
 async function sembrarDatos() {
   try {
     console.log('Creando usuarios de prueba...');
 
-    const passwordInicial = process.env.DEMO_PASSWORD || (process.env.NODE_ENV === 'production' ? null : 'vitalis123');
-    if (!passwordInicial || passwordInicial.length < 8) {
-      throw new Error('DEMO_PASSWORD debe tener al menos 8 caracteres en producción');
-    }
+    const passwordInicial = obtenerClaveDemo();
     const passwordHash = await bcrypt.hash(passwordInicial, 10);
 
     await pool.query(
