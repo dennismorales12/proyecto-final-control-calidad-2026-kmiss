@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const uploadImagenServicio = require('../middleware/uploadImagenServicio');
+const { validarServicio } = require('../domain/validation');
 
 const router = express.Router();
 router.use(autenticar);
@@ -23,16 +24,16 @@ router.get('/', async (req, res) => {
 router.post('/', permitirRoles('administrador'), async (req, res) => {
   const { nombre, descripcion, duracion_minutos, precio, especialidad } = req.body;
 
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre del servicio es requerido' });
-  }
+  let valores;
+  try { valores = validarServicio({ nombre, duracion_minutos, precio }); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
 
   try {
     const resultado = await pool.query(
       `INSERT INTO servicios (nombre, descripcion, duracion_minutos, precio, especialidad)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id,nombre,descripcion,duracion_minutos,precio,especialidad,imagen_url,activo,creado_en`,
-      [nombre, descripcion || null, duracion_minutos || 30, precio || 0, especialidad || null]
+      [String(nombre).trim(), descripcion || null, valores.duracion, valores.precio, especialidad || null]
     );
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
@@ -59,6 +60,9 @@ router.post('/:id/imagen', permitirRoles('administrador'), uploadImagenServicio.
 // PUT /api/servicios/:id — solo administrador
 router.put('/:id', permitirRoles('administrador'), async (req, res) => {
   const { nombre, descripcion, duracion_minutos, precio, especialidad, activo } = req.body;
+  let valores;
+  try { valores = validarServicio({ nombre, duracion_minutos, precio }); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
 
   try {
     const resultado = await pool.query(
@@ -67,7 +71,7 @@ router.put('/:id', permitirRoles('administrador'), async (req, res) => {
         precio = $4, especialidad = $5, activo = $6
        WHERE id = $7
        RETURNING id,nombre,descripcion,duracion_minutos,precio,especialidad,imagen_url,activo,creado_en`,
-      [nombre, descripcion || null, duracion_minutos || 30, precio || 0,
+      [String(nombre).trim(), descripcion || null, valores.duracion, valores.precio,
         especialidad || null, activo !== undefined ? activo : true, req.params.id]
     );
     if (resultado.rows.length === 0) {

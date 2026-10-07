@@ -1,5 +1,9 @@
 node_modules/
 frontend/dist/
+coverage/
+.nyc_output/
+test-results/
+k6-results/
 .env
 .env.*
 !.env.example
@@ -8,3 +12,7 @@ frontend/dist/
 Thumbs.db
 .vscode/
 .idea/
+backend/coverage/
+test-results/
+load/results/
+junit.xml

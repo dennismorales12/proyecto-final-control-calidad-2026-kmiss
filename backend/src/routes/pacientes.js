@@ -3,6 +3,7 @@ const XLSX = require('xlsx');
 const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { obtenerCelda: obtener } = require('../importacionExcel');
 
 const router = express.Router();
 router.use(autenticar);
@@ -36,6 +37,10 @@ router.get('/', async (req, res) => {
 // GET /api/pacientes/:id/historial — ficha comercial y clínica del paciente
 router.get('/:id/historial', async (req, res) => {
   try {
+    const paciente = await pool.query(`SELECT ${COLUMNAS_PACIENTE} FROM pacientes WHERE id = $1`, [req.params.id]);
+    if (paciente.rows.length === 0) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
     const [citas, ventas, pedidos] = await Promise.all([
       pool.query(
         `SELECT c.id, c.fecha_hora, c.estado, c.motivo_consulta, c.notas_medico,
@@ -65,7 +70,7 @@ router.get('/:id/historial', async (req, res) => {
         [req.params.id]
       ),
     ]);
-    res.json({ citas: citas.rows, ventas: ventas.rows, pedidos: pedidos.rows });
+    res.json({ paciente: paciente.rows[0], citas: citas.rows, ventas: ventas.rows, pedidos: pedidos.rows });
   } catch (error) {
     console.error('Error al obtener historial del paciente:', error);
     res.status(500).json({ error: 'Error al obtener el historial del paciente' });
@@ -176,6 +181,47 @@ router.delete('/:id', permitirRoles('administrador'), async (req, res) => {
   }
 });
 
+
+async function guardarPacienteImportado(fila, nombre_completo, usuarioId) {
+    const nit = obtener(fila, 'nit');
+    const telefono = obtener(fila, 'telefono', 'teléfono');
+    const email = obtener(fila, 'email', 'correo');
+    const fechaNacRaw = obtener(fila, 'fecha_nacimiento', 'fecha nacimiento');
+    const fecha_nacimiento = fechaNacRaw instanceof Date ? fechaNacRaw.toISOString().split('T')[0] : fechaNacRaw;
+    const direccion = obtener(fila, 'direccion', 'dirección');
+    const tipo_sangre = obtener(fila, 'tipo_sangre', 'tipo de sangre');
+    const alergias = obtener(fila, 'alergias');
+    const contacto_emergencia_nombre = obtener(fila, 'contacto_emergencia_nombre', 'contacto de emergencia');
+    const contacto_emergencia_telefono = obtener(fila, 'contacto_emergencia_telefono', 'telefono de emergencia', 'teléfono de emergencia');
+
+      let existenteId = null;
+      if (nit) {
+        const existente = await pool.query(
+          'SELECT id FROM pacientes WHERE UPPER(nit)=UPPER($1) LIMIT 1',
+          [nit]
+        );
+        if (existente.rows.length > 0) existenteId = existente.rows[0].id;
+      }
+
+      if (existenteId) {
+        await pool.query(
+          `UPDATE pacientes SET nit=COALESCE($1,nit), nombre_completo=$2, telefono=$3, email=$4, fecha_nacimiento=$5,
+            direccion=$6, tipo_sangre=$7, alergias=$8, contacto_emergencia_nombre=$9,
+            contacto_emergencia_telefono=$10, actualizado_en=NOW() WHERE id=$11`,
+          [nit ? String(nit).toUpperCase().replace(/[^0-9A-Z]/g, '') : null, nombre_completo, telefono, email, fecha_nacimiento, direccion, tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, existenteId]
+        );
+        return 'actualizados';
+      } else {
+        await pool.query(
+          `INSERT INTO pacientes (nit, nombre_completo, telefono, email, fecha_nacimiento, direccion,
+            tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, creado_por)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [nit ? String(nit).toUpperCase().replace(/[^0-9A-Z]/g, '') : null, nombre_completo, telefono, email, fecha_nacimiento, direccion, tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, usuarioId]
+        );
+        return 'creados';
+      }
+}
+
 // POST /api/pacientes/importar — carga masiva desde Excel (solo administrador)
 // Columnas esperadas: nombre_completo, nit, fecha_nacimiento, telefono, email, direccion,
 // tipo_sangre, alergias, contacto_emergencia_nombre y contacto_emergencia_telefono.
@@ -198,13 +244,6 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
     return res.status(400).json({ error: 'El archivo no contiene filas de datos' });
   }
 
-  const obtener = (fila, ...claves) => {
-    for (const clave of claves) {
-      const encontrada = Object.keys(fila).find((k) => k.toLowerCase().trim() === clave);
-      if (encontrada && fila[encontrada] !== null && fila[encontrada] !== '') return fila[encontrada];
-    }
-    return null;
-  };
 
   let creados = 0, actualizados = 0;
   const errores = [];
@@ -219,44 +258,10 @@ router.post('/importar', permitirRoles('administrador'), upload.single('archivo'
       continue;
     }
 
-    const nit = obtener(fila, 'nit');
-    const telefono = obtener(fila, 'telefono', 'teléfono');
-    const email = obtener(fila, 'email', 'correo');
-    const fechaNacRaw = obtener(fila, 'fecha_nacimiento', 'fecha nacimiento');
-    const fecha_nacimiento = fechaNacRaw instanceof Date ? fechaNacRaw.toISOString().split('T')[0] : fechaNacRaw;
-    const direccion = obtener(fila, 'direccion', 'dirección');
-    const tipo_sangre = obtener(fila, 'tipo_sangre', 'tipo de sangre');
-    const alergias = obtener(fila, 'alergias');
-    const contacto_emergencia_nombre = obtener(fila, 'contacto_emergencia_nombre', 'contacto de emergencia');
-    const contacto_emergencia_telefono = obtener(fila, 'contacto_emergencia_telefono', 'telefono de emergencia', 'teléfono de emergencia');
-
     try {
-      let existenteId = null;
-      if (nit) {
-        const existente = await pool.query(
-          'SELECT id FROM pacientes WHERE UPPER(nit)=UPPER($1) LIMIT 1',
-          [nit]
-        );
-        if (existente.rows.length > 0) existenteId = existente.rows[0].id;
-      }
-
-      if (existenteId) {
-        await pool.query(
-          `UPDATE pacientes SET nit=COALESCE($1,nit), nombre_completo=$2, telefono=$3, email=$4, fecha_nacimiento=$5,
-            direccion=$6, tipo_sangre=$7, alergias=$8, contacto_emergencia_nombre=$9,
-            contacto_emergencia_telefono=$10, actualizado_en=NOW() WHERE id=$11`,
-          [nit ? String(nit).toUpperCase().replace(/[^0-9A-Z]/g, '') : null, nombre_completo, telefono, email, fecha_nacimiento, direccion, tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, existenteId]
-        );
-        actualizados++;
-      } else {
-        await pool.query(
-          `INSERT INTO pacientes (nit, nombre_completo, telefono, email, fecha_nacimiento, direccion,
-            tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, creado_por)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-          [nit ? String(nit).toUpperCase().replace(/[^0-9A-Z]/g, '') : null, nombre_completo, telefono, email, fecha_nacimiento, direccion, tipo_sangre, alergias, contacto_emergencia_nombre, contacto_emergencia_telefono, req.usuario.id]
-        );
-        creados++;
-      }
+      const resultado = await guardarPacienteImportado(fila, nombre_completo, req.usuario.id);
+      if (resultado === 'actualizados') actualizados++;
+      else creados++;
     } catch (error) {
       errores.push(`Fila ${numeroFila} (${nombre_completo}): ${error.message}`);
     }
