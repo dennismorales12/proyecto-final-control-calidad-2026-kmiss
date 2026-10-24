@@ -15,7 +15,7 @@ pr:
       - main
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: ubuntu-24.04
 
 variables:
   - group: KMISS - Ambientes
@@ -260,7 +260,10 @@ stages:
             displayName: Generar secreto temporal de integración
 
           - script: |
+              set -euo pipefail
               npm ci --prefix backend
+              mkdir -p backend/test-results
+              node --test --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=backend/test-results/migraciones.xml backend/integration/migraciones.test.cjs
               npm run init-db --prefix backend
               npm run seed --prefix backend
             displayName: Preparar API y base temporal
@@ -269,6 +272,16 @@ stages:
               DEMO_PASSWORD: $(CLAVE_PRUEBAS_API)
               JWT_SECRET: $(JWT_CI)
               NODE_ENV: test
+
+          - task: PublishTestResults@2
+            displayName: Publicar validación de migraciones PostgreSQL
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: backend/test-results/migraciones.xml
+              testRunTitle: Migraciones PostgreSQL KMISS
+              failTaskOnFailedTests: true
+              failTaskOnMissingResultsFile: true
 
           - script: |
               nohup npm start --prefix backend > "$(Agent.TempDirectory)/kmiss-api.log" 2>&1 &
