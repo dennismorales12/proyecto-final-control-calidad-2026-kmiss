@@ -150,7 +150,9 @@ npm run dev
 
 ## Usuarios de prueba
 
-Contraseña para todos: `vitalis123`
+La contraseña inicial se obtiene de `DEMO_PASSWORD`, configurada antes de ejecutar el seed (mínimo 8 caracteres). No hay contraseña predeterminada en el código. Utiliza datos y credenciales exclusivos del ambiente de pruebas.
+
+`CORS_ORIGINS` admite una lista de orígenes exactos separados por comas cuando el frontend está en otra URL. Si no se configura, no se conceden permisos CORS a sitios externos; el frontend servido por Express bajo la misma URL sigue funcionando. CORS no sustituye autenticación ni autorización. No habilites comodines ni reutilices claves de producción en QA.
 
 - `admin@vitalis.local` — Administrador
 - `recepcion@vitalis.local` — Recepción

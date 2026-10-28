@@ -4,6 +4,7 @@ const pool = require('../db');
 const { autenticar, permitirRoles } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const uploadImagen = require('../middleware/uploadImagen');
+const { validarProducto } = require('../domain/validation');
 
 const router = express.Router();
 router.use(autenticar);
@@ -46,17 +47,17 @@ router.get('/', async (req, res) => {
 router.post('/', permitirRoles('administrador'), async (req, res) => {
   const { nombre, descripcion, categoria_id, precio, costo, stock_actual, stock_minimo, unidad_medida } = req.body;
 
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre del producto es requerido' });
-  }
+  let valores;
+  try { valores = validarProducto({ nombre, precio, costo, stock_actual, stock_minimo }); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
 
   try {
     const resultado = await pool.query(
       `INSERT INTO productos (nombre, descripcion, categoria_id, categoria, precio, costo, stock_actual, stock_minimo, unidad_medida)
        VALUES ($1,$2,$3,(SELECT nombre FROM categorias_productos WHERE id=$3),$4,$5,$6,$7,$8)
        RETURNING id,nombre,descripcion,categoria_id,categoria,imagen_url,precio,costo,stock_actual,stock_reservado,stock_minimo,unidad_medida,activo,creado_en`,
-      [nombre, descripcion || null, categoria_id || null, precio || 0, costo || 0,
-        stock_actual || 0, stock_minimo || 0, unidad_medida || 'unidad']
+      [String(nombre).trim(), descripcion || null, categoria_id || null, valores.precio, valores.costo,
+        valores.stockActual, valores.stockMinimo, unidad_medida || 'unidad']
     );
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
@@ -83,11 +84,14 @@ router.post('/:id/imagen', permitirRoles('administrador'), uploadImagen.single('
 // PUT /api/productos/:id — actualizar (admin)
 router.put('/:id', permitirRoles('administrador'), async (req, res) => {
   const { nombre, descripcion, categoria_id, precio, costo, stock_actual, stock_minimo, unidad_medida, activo } = req.body;
+  let valores;
+  try { valores = validarProducto({ nombre, precio, costo, stock_actual, stock_minimo }); }
+  catch (error) { return res.status(400).json({ error: error.message }); }
 
   try {
     const existencia = await pool.query('SELECT stock_reservado FROM productos WHERE id = $1', [req.params.id]);
     if (!existencia.rows[0]) return res.status(404).json({ error: 'Producto no encontrado' });
-    if (Number(stock_actual || 0) < existencia.rows[0].stock_reservado) {
+    if (valores.stockActual < existencia.rows[0].stock_reservado) {
       return res.status(400).json({ error: `No puedes reducir el stock por debajo de las ${existencia.rows[0].stock_reservado} unidades reservadas` });
     }
     const resultado = await pool.query(
@@ -97,8 +101,8 @@ router.put('/:id', permitirRoles('administrador'), async (req, res) => {
         stock_actual = $6, stock_minimo = $7, unidad_medida = $8, activo = $9
        WHERE id = $10
        RETURNING id,nombre,descripcion,categoria_id,categoria,imagen_url,precio,costo,stock_actual,stock_reservado,stock_minimo,unidad_medida,activo,creado_en`,
-      [nombre, descripcion || null, categoria_id || null, precio || 0, costo || 0,
-        stock_actual || 0, stock_minimo || 0, unidad_medida || 'unidad',
+      [String(nombre).trim(), descripcion || null, categoria_id || null, valores.precio, valores.costo,
+        valores.stockActual, valores.stockMinimo, unidad_medida || 'unidad',
         activo !== undefined ? activo : true, req.params.id]
     );
     if (resultado.rows.length === 0) {

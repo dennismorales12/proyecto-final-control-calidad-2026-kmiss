@@ -2,11 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const { crearLimitadorLogin } = require('../middleware/loginRateLimit');
 
 const router = express.Router();
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', crearLimitadorLogin(), async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
