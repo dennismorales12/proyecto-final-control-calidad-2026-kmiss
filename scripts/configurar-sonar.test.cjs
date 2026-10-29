@@ -24,3 +24,7 @@ test('Una rama desconocida se bloquea sin reutilizar producción', () => {
 test('Una etiqueta no se confunde con una rama de ambiente', () => {
   assert.throws(() => seleccionarProyecto({ BUILD_SOURCEBRANCH: 'refs/tags/DEV' }), /No hay proyecto/);
 });
+
+test('La revisión SQL usa su proyecto independiente al publicar la rama', () => {
+  assert.equal(seleccionarProyecto({ BUILD_SOURCEBRANCH: 'refs/heads/revision/sonar-sql' }).clave, 'dennismorales12_kmiss-sql');
+});
