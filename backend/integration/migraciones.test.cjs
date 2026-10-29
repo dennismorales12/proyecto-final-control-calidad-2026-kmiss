@@ -76,10 +76,52 @@ describe('Migraciones PostgreSQL KMISS', { concurrency: false }, () => {
     assert.equal((await cliente.query('SELECT count(*)::int AS total FROM productos')).rows[0].total, 0);
   });
 
+  test('conserva los estados válidos de citas y pedidos y rechaza estados ajenos', async () => {
+    for (const [funcion, estados] of [
+      ['kmiss_estado_cita_valido', ['solicitada','programada','confirmada','atendida','cancelada','no_asistio']],
+      ['kmiss_estado_pedido_valido', ['nuevo','contactado','esperando_pago','pagado','preparando','entregado','cancelado','vencido']],
+    ]) {
+      const resultado = await cliente.query(`SELECT estado, ${funcion}(estado) AS valido FROM unnest($1::text[]) AS estado`, [[...estados,'desconocido','']]);
+      assert.deepEqual(resultado.rows.map(r => r.valido), [...estados.map(() => true), false, false]);
+    }
+  });
+
+  test('mantiene el pago por defecto y permite tarjeta únicamente en ventas', async () => {
+    const venta = await cliente.query('INSERT INTO ventas DEFAULT VALUES RETURNING metodo_pago');
+    assert.equal(venta.rows[0].metodo_pago, 'efectivo');
+    const pedido = await cliente.query("INSERT INTO pedidos_publicos(nombre_cliente,telefono,direccion_envio) VALUES ('Cliente de prueba','55550101','Dirección sintética') RETURNING estado,metodo_pago_preferido");
+    assert.deepEqual(pedido.rows[0], {estado:'nuevo',metodo_pago_preferido:'efectivo'});
+    await cliente.query("INSERT INTO ventas(metodo_pago) VALUES ('tarjeta'),('transferencia')");
+    await cliente.query("INSERT INTO pedidos_publicos(nombre_cliente,telefono,direccion_envio,metodo_pago_preferido) VALUES ('Cliente de prueba','55550102','Dirección sintética','transferencia')");
+    await cliente.query('SAVEPOINT pago_invalido');
+    await assert.rejects(cliente.query("INSERT INTO pedidos_publicos(nombre_cliente,telefono,direccion_envio,metodo_pago_preferido) VALUES ('Cliente de prueba','55550103','Dirección sintética','tarjeta')"), {code:'23514'});
+    await cliente.query('ROLLBACK TO SAVEPOINT pago_invalido');
+  });
+
+  test('sólo los pedidos pendientes mantienen reserva de inventario', async () => {
+    const estados = ['nuevo','contactado','esperando_pago','pagado','preparando','entregado','cancelado','vencido','desconocido'];
+    const resultado = await cliente.query('SELECT estado,kmiss_pedido_requiere_reserva(estado) AS reserva FROM unnest($1::text[]) AS estado', [estados]);
+    assert.deepEqual(resultado.rows.map(r => r.reserva), [true,true,true,false,false,false,false,false,false]);
+  });
+
+  test('actualiza restricciones y valores por defecto de tablas ya existentes', async () => {
+    await cliente.query("ALTER TABLE ventas ALTER COLUMN metodo_pago SET DEFAULT 'efectivo'");
+    await cliente.query("ALTER TABLE pedidos_publicos ALTER COLUMN estado SET DEFAULT 'nuevo'");
+    await cliente.query(esquema);
+    const restricciones = await cliente.query("SELECT conname,pg_get_constraintdef(oid) AS definicion FROM pg_constraint WHERE conname = ANY($1::text[])", [['citas_estado_check','ventas_metodo_pago_check','pedidos_publicos_estado_check','pedidos_publicos_metodo_pago_preferido_check']]);
+    assert.equal(restricciones.rows.length, 4);
+    assert.ok(restricciones.rows.every(r => r.definicion.includes('kmiss_')));
+    const columnas = await cliente.query("SELECT column_default FROM information_schema.columns WHERE table_schema='public' AND ((table_name='ventas' AND column_name='metodo_pago') OR (table_name='pedidos_publicos' AND column_name IN ('estado','metodo_pago_preferido')))");
+    assert.equal(columnas.rows.length, 3);
+    assert.ok(columnas.rows.every(r => r.column_default.includes('kmiss_')));
+  });
+
   test('el rollback de cada caso deja la base temporal sin tablas persistidas', async () => {
     await cliente.query('ROLLBACK');
     const { rows } = await cliente.query("SELECT count(*)::int AS total FROM information_schema.tables WHERE table_schema='public'");
     assert.equal(rows[0].total, 0);
+    const funciones = await cliente.query("SELECT count(*)::int AS total FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'kmiss_%'");
+    assert.equal(funciones.rows[0].total, 0, 'El rollback también revierte las reglas compartidas');
     await cliente.query('BEGIN');
   });
 });
