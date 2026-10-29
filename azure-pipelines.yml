@@ -203,6 +203,17 @@ stages:
             displayName: Descargar código fuente
             fetchDepth: 0
 
+          - task: UseNode@1
+            displayName: Preparar Node.js para configurar Sonar
+            inputs:
+              version: $(versionNode)
+
+          - script: node --test scripts/configurar-sonar.test.cjs
+            displayName: Verificar selección de Sonar por rama
+
+          - script: node scripts/configurar-sonar.cjs
+            displayName: Seleccionar proyecto Sonar del ambiente
+
           - task: DownloadPipelineArtifact@2
             displayName: Recuperar cobertura del backend
             inputs:
@@ -222,6 +233,9 @@ stages:
               organization: $(SONAR_ORGANIZATION)
               scannerMode: cli
               configMode: file
+              extraProperties: |
+                sonar.projectKey=$(proyectoSonar)
+                sonar.projectName=$(nombreProyectoSonar)
 
           - task: SonarCloudAnalyze@4
             displayName: Ejecutar análisis estático
