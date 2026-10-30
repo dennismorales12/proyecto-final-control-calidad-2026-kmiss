@@ -36,6 +36,42 @@ test('al crear una cita el médico se asigna a sí mismo', async () => {
   expect(cliente.query).toHaveBeenCalledWith('COMMIT');
   expect(cliente.release).toHaveBeenCalledTimes(1);
 });
+
+test.each([
+  ['post','/citas',cita],
+  ['put','/citas/55',cita],
+  ['put','/citas/55/estado',{estado:'atendida'}],
+])('responde 503 si la conexión falla en %s %s', async (metodo,ruta,datos) => {
+  pool.connect.mockRejectedValue(new Error('Conexión temporal no disponible'));
+  const respuesta = await request(app)[metodo](ruta).send(datos).timeout({response:500,deadline:1000});
+  expect(respuesta.status).toBe(503);
+  expect(respuesta.body.error).toBe('No se pudo conectar con la base de datos');
+  expect(cliente.query).not.toHaveBeenCalled();
+  expect(cliente.release).not.toHaveBeenCalled();
+});
+
+test('un fallo del rollback conserva la respuesta del error original y libera la conexión', async () => {
+  validarDisponibilidad.mockRejectedValue(new Error('Horario ocupado'));
+  cliente.query.mockImplementation(async sql => {
+    if(sql === 'ROLLBACK') throw new Error('Fallo al revertir');
+    return {rows:[]};
+  });
+  const respuesta = await request(app).post('/citas').send(cita).timeout({response:500,deadline:1000});
+  expect(respuesta.status).toBe(400);
+  expect(respuesta.body.error).toBe('Horario ocupado');
+  expect(cliente.release).toHaveBeenCalledTimes(1);
+});
+
+test('un fallo de conexión al importar informa la fila sin dejar la solicitud abierta', async () => {
+  XLSX.utils.sheet_to_json.mockReturnValue([{paciente:'Ana',servicio:'Consulta',medico:'Luis',fecha:'2035-10-20T10:00:00'}]);
+  pool.query.mockResolvedValue({rows:[{id:2}]});
+  pool.connect.mockRejectedValue(new Error('Conexión temporal no disponible'));
+  const respuesta = await request(app).post('/citas/importar').timeout({response:500,deadline:1000});
+  expect(respuesta.status).toBe(200);
+  expect(respuesta.body.creadas).toBe(0);
+  expect(respuesta.body.errores[0]).toContain('Fila 2: Conexión temporal no disponible');
+  expect(cliente.release).not.toHaveBeenCalled();
+});
 test('una cita sin médico no abre una transacción', async () => {
   expect((await request(app).post('/citas').send({ ...cita, medico_id: null })).status).toBe(400);
   expect(pool.connect).not.toHaveBeenCalled();
