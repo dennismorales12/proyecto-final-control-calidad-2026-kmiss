@@ -65,6 +65,15 @@ function buscarFondo(nodo) {
   if (nodo.props?.className === 'modal-fondo') return nodo;
   return buscarFondo(nodo.props?.children);
 }
+
+test.each([1,'1',null])('la promoción identifica el artículo seleccionado con el valor %s', seleccionado => {
+  const productos = [producto, {...producto,id:2,nombre:'Otro producto'}];
+  const html = mostrar(Ajustes, {6:productos,7:true,9:{alcance:'producto',producto_id:seleccionado,categoria_id:'',descuento_porcentaje:10,fecha_inicio:'2035-01-01',fecha_fin:'',activo:true},12:true});
+  const esperados = seleccionado === null ? 0 : 1;
+  expect((html.match(/role="option" aria-selected="true"/g) || []).length).toBe(esperados);
+  expect((html.match(/role="option" aria-selected="false"/g) || []).length).toBe(productos.length-esperados);
+  expect(html).toContain('role="listbox"');
+});
 test.each([
   ['detalle del servicio',Tienda,16,servicio,null],
   ['solicitud de cita',Tienda,14,true,false],

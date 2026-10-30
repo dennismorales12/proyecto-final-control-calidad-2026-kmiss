@@ -108,6 +108,23 @@ router.get('/disponibilidad', async (req, res) => {
 });
 
 // POST /api/citas — crear (admin y recepción)
+const ERROR_CONEXION = 'No se pudo conectar con la base de datos';
+
+function responderErrorCita(res, client, error, mensaje) {
+  const estado = client ? 400 : 503;
+  const detalle = client ? (error.message || mensaje) : ERROR_CONEXION;
+  return res.status(estado).json({ error: detalle });
+}
+
+async function revertirConexion(client) {
+  if (!client) return;
+  try {
+    await client.query('ROLLBACK');
+  } catch (error) {
+    console.error('Error al revertir la transacción de citas:', error);
+  }
+}
+
 router.post('/', permitirRoles('administrador', 'recepcion', 'medico'), async (req, res) => {
   const { paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta } = req.body;
   const medicoFinal = req.usuario.rol === 'medico' ? req.usuario.id : medico_id;
@@ -116,8 +133,9 @@ router.post('/', permitirRoles('administrador', 'recepcion', 'medico'), async (r
     return res.status(400).json({ error: 'Paciente, servicio, medico, sede y fecha/hora son requeridos' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     await validarDisponibilidad(client, { medicoId: medicoFinal, sedeId: sede_id, servicioId: servicio_id, fechaHora: fecha_hora });
     const resultado = await client.query(
@@ -129,11 +147,11 @@ router.post('/', permitirRoles('administrador', 'recepcion', 'medico'), async (r
     await client.query('COMMIT');
     res.status(201).json(citaCompleta.rows[0]);
   } catch (error) {
-    await client.query('ROLLBACK');
+    await revertirConexion(client);
     console.error('Error al crear cita:', error);
-    res.status(400).json({ error: error.message || 'Error al crear cita' });
+    responderErrorCita(res, client, error, 'Error al crear cita');
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -149,8 +167,9 @@ router.put('/:id/estado', async (req, res) => {
     return res.status(403).json({ error: 'Solo recepcion puede confirmar una solicitud' });
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     const actual = await client.query('SELECT estado, medico_id FROM citas WHERE id=$1 FOR UPDATE', [req.params.id]);
     if (!actual.rows[0]) {
@@ -167,11 +186,11 @@ router.put('/:id/estado', async (req, res) => {
     await client.query('COMMIT');
     res.json(citaCompleta.rows[0]);
   } catch (error) {
-    await client.query('ROLLBACK');
+    await revertirConexion(client);
     console.error('Error al actualizar estado de cita:', error);
-    res.status(400).json({ error: error.message || 'Error al actualizar cita' });
+    responderErrorCita(res, client, error, 'Error al actualizar cita');
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -180,8 +199,9 @@ router.put('/:id', permitirRoles('administrador', 'recepcion', 'medico'), async 
   const { paciente_id, servicio_id, medico_id, sede_id, fecha_hora, motivo_consulta, notas_medico } = req.body;
 
   const medicoFinal = req.usuario.rol === 'medico' ? req.usuario.id : medico_id;
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
     if (req.usuario.rol === 'medico') {
       const propia = await client.query('SELECT 1 FROM citas WHERE id=$1 AND medico_id=$2', [req.params.id, req.usuario.id]);
@@ -200,17 +220,18 @@ router.put('/:id', permitirRoles('administrador', 'recepcion', 'medico'), async 
         motivo_consulta || null, notas_medico || null, req.params.id]
     );
     if (resultado.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
     const citaCompleta = await client.query(`${SELECT_BASE} WHERE c.id = $1`, [req.params.id]);
     await client.query('COMMIT');
     res.json(citaCompleta.rows[0]);
   } catch (error) {
-    await client.query('ROLLBACK');
+    await revertirConexion(client);
     console.error('Error al actualizar cita:', error);
-    res.status(400).json({ error: error.message || 'Error al actualizar cita' });
+    responderErrorCita(res, client, error, 'Error al actualizar cita');
   } finally {
-    client.release();
+    client?.release();
   }
 });
 
@@ -264,8 +285,9 @@ async function resolverReferenciasImportacion({ pacienteRef, servicioRef, sedeRe
 }
 
 async function guardarCitaImportada({ paciente, servicio, sede, medico_id }, { fecha_hora, motivo_consulta, estado }, usuarioId) {
-      const client = await pool.connect();
+      let client;
       try {
+        client = await pool.connect();
         await client.query('BEGIN');
         if (medico_id && !['cancelada', 'no_asistio'].includes(estado)) {
           await validarDisponibilidad(client, {
@@ -282,10 +304,10 @@ async function guardarCitaImportada({ paciente, servicio, sede, medico_id }, { f
         );
         await client.query('COMMIT');
       } catch (error) {
-        await client.query('ROLLBACK');
+        await revertirConexion(client);
         throw error;
       } finally {
-        client.release();
+        client?.release();
       }
 }
 

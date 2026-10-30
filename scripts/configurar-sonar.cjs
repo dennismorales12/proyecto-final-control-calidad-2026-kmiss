@@ -1,4 +1,5 @@
 const proyectos = Object.freeze({
+  'revision/sonar-sql': { clave: 'dennismorales12_kmiss-sql', nombre: 'KMISS - Revisión SQL' },
   DEV: { clave: 'dennismorales12_kmiss-dev', nombre: 'KMISS - Desarrollo' },
   QA: { clave: 'dennismorales12_kmiss-qa', nombre: 'KMISS - Calidad' },
   main: { clave: 'dennismorales12_proyecto-final-control-calidad-2026-kmiss', nombre: 'Proyecto Final Control de Calidad 2026 KMISS' },

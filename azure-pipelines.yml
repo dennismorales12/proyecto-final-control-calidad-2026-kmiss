@@ -6,6 +6,7 @@ trigger:
       - DEV
       - QA
       - main
+      - revision/sonar-sql
 
 pr:
   branches:
