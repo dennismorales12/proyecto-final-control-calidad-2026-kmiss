@@ -3,6 +3,32 @@
 -- Esquema inicial de base de datos (PostgreSQL)
 -- ============================================
 
+-- Reglas compartidas por las tablas nuevas y las migraciones anteriores.
+-- Son funciones inmutables: no consultan ni modifican datos de la aplicación.
+CREATE OR REPLACE FUNCTION kmiss_estado_cita_valido(valor TEXT)
+RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE
+AS $$ SELECT valor IN ('solicitada', 'programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio') $$;
+
+CREATE OR REPLACE FUNCTION kmiss_pago_predeterminado()
+RETURNS TEXT LANGUAGE SQL IMMUTABLE PARALLEL SAFE
+AS $$ SELECT 'efectivo'::text $$;
+
+CREATE OR REPLACE FUNCTION kmiss_metodo_pago_valido(valor TEXT, admite_tarjeta BOOLEAN)
+RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE
+AS $$ SELECT valor IN ('efectivo', 'transferencia') OR (admite_tarjeta AND valor = 'tarjeta') $$;
+
+CREATE OR REPLACE FUNCTION kmiss_estado_pedido_inicial()
+RETURNS TEXT LANGUAGE SQL IMMUTABLE PARALLEL SAFE
+AS $$ SELECT 'nuevo'::text $$;
+
+CREATE OR REPLACE FUNCTION kmiss_estado_pedido_valido(valor TEXT)
+RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE
+AS $$ SELECT valor = kmiss_estado_pedido_inicial() OR valor IN ('contactado', 'esperando_pago', 'pagado', 'preparando', 'entregado', 'cancelado', 'vencido') $$;
+
+CREATE OR REPLACE FUNCTION kmiss_pedido_requiere_reserva(valor TEXT)
+RETURNS BOOLEAN LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE
+AS $$ SELECT valor = kmiss_estado_pedido_inicial() OR valor IN ('contactado', 'esperando_pago') $$;
+
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(150) NOT NULL,
@@ -52,7 +78,7 @@ CREATE TABLE IF NOT EXISTS citas (
     medico_id INTEGER REFERENCES usuarios(id),
     fecha_hora TIMESTAMP NOT NULL,
     estado VARCHAR(20) NOT NULL DEFAULT 'programada'
-        CHECK (estado IN ('solicitada', 'programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio')),
+        CHECK (kmiss_estado_cita_valido(estado)),
     motivo_consulta TEXT,
     notas_medico TEXT,
     creado_por INTEGER REFERENCES usuarios(id),
@@ -132,17 +158,9 @@ UPDATE citas SET sede_id=(SELECT id FROM sedes ORDER BY id LIMIT 1) WHERE sede_i
 ALTER TABLE citas ALTER COLUMN sede_id SET NOT NULL;
 ALTER TABLE citas DROP CONSTRAINT IF EXISTS citas_estado_check;
 ALTER TABLE citas ADD CONSTRAINT citas_estado_check
-    CHECK (estado IN ('solicitada', 'programada', 'confirmada', 'atendida', 'cancelada', 'no_asistio'));
+    CHECK (kmiss_estado_cita_valido(estado));
 INSERT INTO horarios_semanales (medico_id, sede_id, semana)
-SELECT u.id, s.id, '{
-  "0": [],
-  "1": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "2": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "3": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "4": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "5": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}],
-  "6": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}]
-}'::jsonb
+SELECT u.id, s.id, '{ "0": [], "1": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "2": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "3": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "4": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "5": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}], "6": [{"inicio":"08:00","fin":"12:00"},{"inicio":"13:00","fin":"17:00"}] }'::jsonb
 FROM usuarios u CROSS JOIN (SELECT id FROM sedes WHERE activo=TRUE ORDER BY id LIMIT 1) s
 WHERE u.rol = 'medico' AND u.activo = TRUE
   AND NOT EXISTS (SELECT 1 FROM horarios_semanales hs WHERE hs.medico_id=u.id)
@@ -187,8 +205,8 @@ CREATE TABLE IF NOT EXISTS ventas (
     subtotal NUMERIC(10,2) NOT NULL DEFAULT 0,
     descuento NUMERIC(10,2) NOT NULL DEFAULT 0,
     total NUMERIC(10,2) NOT NULL DEFAULT 0,
-    metodo_pago VARCHAR(20) NOT NULL DEFAULT 'efectivo'
-        CHECK (metodo_pago IN ('efectivo', 'tarjeta', 'transferencia')),
+    metodo_pago VARCHAR(20) NOT NULL DEFAULT kmiss_pago_predeterminado()
+        CHECK (kmiss_metodo_pago_valido(metodo_pago, TRUE)),
     estado VARCHAR(20) NOT NULL DEFAULT 'completada'
         CHECK (estado IN ('completada', 'anulada')),
     creado_en TIMESTAMP DEFAULT NOW()
@@ -251,13 +269,13 @@ CREATE TABLE IF NOT EXISTS pedidos_publicos (
     telefono VARCHAR(30) NOT NULL,
     email VARCHAR(150),
     direccion_envio VARCHAR(255) NOT NULL,
-    metodo_pago_preferido VARCHAR(20) NOT NULL DEFAULT 'efectivo'
-        CHECK (metodo_pago_preferido IN ('efectivo', 'transferencia')),
+    metodo_pago_preferido VARCHAR(20) NOT NULL DEFAULT kmiss_pago_predeterminado()
+        CHECK (kmiss_metodo_pago_valido(metodo_pago_preferido, FALSE)),
     notas TEXT,
     subtotal NUMERIC(10,2) NOT NULL DEFAULT 0,
     total NUMERIC(10,2) NOT NULL DEFAULT 0,
-    estado VARCHAR(30) NOT NULL DEFAULT 'nuevo'
-        CHECK (estado IN ('nuevo', 'contactado', 'esperando_pago', 'pagado', 'preparando', 'entregado', 'cancelado', 'vencido')),
+    estado VARCHAR(30) NOT NULL DEFAULT kmiss_estado_pedido_inicial()
+        CHECK (kmiss_estado_pedido_valido(estado)),
     motivo_rechazo TEXT,
     revisado_por INTEGER REFERENCES usuarios(id),
     revisado_en TIMESTAMP,
@@ -326,22 +344,31 @@ ALTER TABLE pedidos_publicos ADD COLUMN IF NOT EXISTS contactado_en TIMESTAMP;
 ALTER TABLE pedidos_publicos ADD COLUMN IF NOT EXISTS pago_confirmado_en TIMESTAMP;
 ALTER TABLE pedidos_publicos ADD COLUMN IF NOT EXISTS referencia_pago VARCHAR(100);
 ALTER TABLE pedidos_publicos ADD COLUMN IF NOT EXISTS entregado_en TIMESTAMP;
+ALTER TABLE ventas ALTER COLUMN metodo_pago SET DEFAULT kmiss_pago_predeterminado();
+ALTER TABLE ventas DROP CONSTRAINT IF EXISTS ventas_metodo_pago_check;
+ALTER TABLE ventas ADD CONSTRAINT ventas_metodo_pago_check
+    CHECK (kmiss_metodo_pago_valido(metodo_pago, TRUE));
+ALTER TABLE pedidos_publicos ALTER COLUMN metodo_pago_preferido SET DEFAULT kmiss_pago_predeterminado();
+ALTER TABLE pedidos_publicos DROP CONSTRAINT IF EXISTS pedidos_publicos_metodo_pago_preferido_check;
+ALTER TABLE pedidos_publicos ADD CONSTRAINT pedidos_publicos_metodo_pago_preferido_check
+    CHECK (kmiss_metodo_pago_valido(metodo_pago_preferido, FALSE));
 ALTER TABLE pedidos_publicos DROP CONSTRAINT IF EXISTS pedidos_publicos_estado_check;
-ALTER TABLE pedidos_publicos ALTER COLUMN estado SET DEFAULT 'nuevo';
+ALTER TABLE pedidos_publicos ALTER COLUMN estado SET DEFAULT kmiss_estado_pedido_inicial();
 UPDATE pedidos_publicos SET estado = CASE estado
-    WHEN 'pendiente' THEN 'nuevo'
+    WHEN 'pendiente' THEN kmiss_estado_pedido_inicial()
     WHEN 'aprobado' THEN 'pagado'
     WHEN 'rechazado' THEN 'cancelado'
     ELSE estado
-END;
+END
+WHERE estado IN ('pendiente', 'aprobado', 'rechazado');
 UPDATE pedidos_publicos
 SET reserva_expira_en = COALESCE(reserva_expira_en, NOW() + INTERVAL '24 hours')
-WHERE estado IN ('nuevo', 'contactado', 'esperando_pago');
+WHERE kmiss_pedido_requiere_reserva(estado);
 WITH cantidades AS (
     SELECT d.producto_id, SUM(d.cantidad)::integer AS cantidad
     FROM pedido_detalles d
     JOIN pedidos_publicos p ON p.id = d.pedido_id
-    WHERE p.estado IN ('nuevo', 'contactado', 'esperando_pago') AND d.producto_id IS NOT NULL
+    WHERE kmiss_pedido_requiere_reserva(p.estado) AND d.producto_id IS NOT NULL
     GROUP BY d.producto_id
 )
 UPDATE productos p
@@ -349,11 +376,23 @@ SET stock_reservado = LEAST(p.stock_actual, c.cantidad)
 FROM cantidades c
 WHERE p.id = c.producto_id;
 ALTER TABLE pedidos_publicos ADD CONSTRAINT pedidos_publicos_estado_check
-    CHECK (estado IN ('nuevo', 'contactado', 'esperando_pago', 'pagado', 'preparando', 'entregado', 'cancelado', 'vencido'));
+    CHECK (kmiss_estado_pedido_valido(estado));
 ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_stock_reservado_check;
-ALTER TABLE productos ADD CONSTRAINT productos_stock_reservado_check CHECK (stock_reservado >= 0);
+ALTER TABLE productos ADD CONSTRAINT productos_stock_reservado_check CHECK (stock_reservado >= 0) NOT VALID;
 ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_reserva_no_supera_stock_check;
-ALTER TABLE productos ADD CONSTRAINT productos_reserva_no_supera_stock_check CHECK (stock_reservado <= stock_actual);
+ALTER TABLE productos ADD CONSTRAINT productos_reserva_no_supera_stock_check CHECK (stock_reservado <= stock_actual) NOT VALID;
+ALTER TABLE productos DROP CONSTRAINT IF EXISTS productos_valores_no_negativos_check;
+ALTER TABLE productos ADD CONSTRAINT productos_valores_no_negativos_check
+    CHECK (precio >= 0 AND costo >= 0 AND stock_actual >= 0 AND stock_minimo >= 0) NOT VALID;
+ALTER TABLE servicios DROP CONSTRAINT IF EXISTS servicios_valores_validos_check;
+ALTER TABLE servicios ADD CONSTRAINT servicios_valores_validos_check
+    CHECK (duracion_minutos > 0 AND precio >= 0) NOT VALID;
+ALTER TABLE venta_detalles DROP CONSTRAINT IF EXISTS venta_detalles_valores_validos_check;
+ALTER TABLE venta_detalles ADD CONSTRAINT venta_detalles_valores_validos_check
+    CHECK (cantidad > 0 AND precio_unitario >= 0 AND subtotal >= 0) NOT VALID;
+ALTER TABLE ventas DROP CONSTRAINT IF EXISTS ventas_valores_validos_check;
+ALTER TABLE ventas ADD CONSTRAINT ventas_valores_validos_check
+    CHECK (subtotal >= 0 AND descuento >= 0 AND total >= 0 AND descuento <= subtotal) NOT VALID;
 
 -- Conserva el historial de pedidos anteriores vinculándolos a una ficha de cliente.
 INSERT INTO pacientes (nombre_completo, telefono, email, direccion, notas)

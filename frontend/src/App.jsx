@@ -46,7 +46,9 @@ function RutasInternas() {
         <ProtectedRoute><DisenoPrincipal><Inventario /></DisenoPrincipal></ProtectedRoute>
       } />
       <Route path="/ventas" element={
-        <ProtectedRoute><DisenoPrincipal><Ventas /></DisenoPrincipal></ProtectedRoute>
+        <ProtectedRoute rolesPermitidos={['administrador', 'recepcion']}>
+          <DisenoPrincipal><Ventas /></DisenoPrincipal>
+        </ProtectedRoute>
       } />
       <Route path="/pedidos" element={
         <ProtectedRoute rolesPermitidos={['administrador', 'recepcion']}>
