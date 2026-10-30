@@ -62,6 +62,24 @@ test('un fallo del rollback conserva la respuesta del error original y libera la
   expect(cliente.release).toHaveBeenCalledTimes(1);
 });
 
+test('un error de base sin mensaje devuelve una explicación y revierte la transacción', async () => {
+  cliente.query.mockRejectedValueOnce(new Error());
+  const respuesta = await request(app).post('/citas').send(cita).timeout({response:500,deadline:1000});
+  expect(respuesta.status).toBe(400);
+  expect(respuesta.body.error).toBe('Error al crear cita');
+  expect(cliente.query).toHaveBeenCalledWith('ROLLBACK');
+  expect(cliente.release).toHaveBeenCalledTimes(1);
+});
+
+test('editar una cita inexistente revierte antes de liberar la conexión', async () => {
+  cliente.query.mockResolvedValue({rows:[]});
+  const respuesta = await request(app).put('/citas/999').send(cita);
+  expect(respuesta.status).toBe(404);
+  expect(cliente.query).toHaveBeenCalledWith('ROLLBACK');
+  expect(cliente.query).not.toHaveBeenCalledWith('COMMIT');
+  expect(cliente.release).toHaveBeenCalledTimes(1);
+});
+
 test('un fallo de conexión al importar informa la fila sin dejar la solicitud abierta', async () => {
   XLSX.utils.sheet_to_json.mockReturnValue([{paciente:'Ana',servicio:'Consulta',medico:'Luis',fecha:'2035-10-20T10:00:00'}]);
   pool.query.mockResolvedValue({rows:[{id:2}]});

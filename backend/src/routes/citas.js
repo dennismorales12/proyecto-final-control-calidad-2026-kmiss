@@ -110,6 +110,12 @@ router.get('/disponibilidad', async (req, res) => {
 // POST /api/citas — crear (admin y recepción)
 const ERROR_CONEXION = 'No se pudo conectar con la base de datos';
 
+function responderErrorCita(res, client, error, mensaje) {
+  const estado = client ? 400 : 503;
+  const detalle = client ? (error.message || mensaje) : ERROR_CONEXION;
+  return res.status(estado).json({ error: detalle });
+}
+
 async function revertirConexion(client) {
   if (!client) return;
   try {
@@ -143,7 +149,7 @@ router.post('/', permitirRoles('administrador', 'recepcion', 'medico'), async (r
   } catch (error) {
     await revertirConexion(client);
     console.error('Error al crear cita:', error);
-    res.status(client ? 400 : 503).json({ error: client ? (error.message || 'Error al crear cita') : ERROR_CONEXION });
+    responderErrorCita(res, client, error, 'Error al crear cita');
   } finally {
     client?.release();
   }
@@ -182,7 +188,7 @@ router.put('/:id/estado', async (req, res) => {
   } catch (error) {
     await revertirConexion(client);
     console.error('Error al actualizar estado de cita:', error);
-    res.status(client ? 400 : 503).json({ error: client ? (error.message || 'Error al actualizar cita') : ERROR_CONEXION });
+    responderErrorCita(res, client, error, 'Error al actualizar cita');
   } finally {
     client?.release();
   }
@@ -223,7 +229,7 @@ router.put('/:id', permitirRoles('administrador', 'recepcion', 'medico'), async 
   } catch (error) {
     await revertirConexion(client);
     console.error('Error al actualizar cita:', error);
-    res.status(client ? 400 : 503).json({ error: client ? (error.message || 'Error al actualizar cita') : ERROR_CONEXION });
+    responderErrorCita(res, client, error, 'Error al actualizar cita');
   } finally {
     client?.release();
   }
